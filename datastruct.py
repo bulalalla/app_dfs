@@ -71,14 +71,26 @@ class UI:
             # 把这个元素的儿子添加到队列中
             children = [child for child in et_element]
             queue.extend(children)
-            if len(children):
+            if not len(children):
                 # 如果没有子节点，那么这个节点应该作为UI id的一部分
                 self.id_list.append(element.id)
 
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, UI):
-            pass
+            eq_count = 0
+            for id in self.id_list:
+                for id2 in value.id_list:
+                    if id[0] == id2[0]:
+                        eq_count += 0.3
+                        if id[1] == id2[1]:
+                            eq_count += 0.7
+                        break
+                    elif id[1] == id2[1]:
+                        eq_count += 1
+                        break
+            print((eq_count * 2)/(len(self.id_list) + len(value.id_list)))
+            return (eq_count * 2)/(len(self.id_list) + len(value.id_list)) > 0.9
         return False
 
 # Android KeyCode
@@ -174,9 +186,13 @@ if __name__ == '__main__':
     with open('./dump2.xml', 'r', encoding='utf-8') as file:
         content = file.read()
     ui = UI(xml_str=content)
-    print(ui.clickable_elements)
-    print(ui.scrollable_elements)
-    print(ui.editable_elements)
+    with open('./dump3.xml', 'r', encoding='utf-8') as file:
+        content = file.read()
+    ui2 = UI(xml_str=content)
+
+    print(ui.id_list)
+    print(ui2.id_list)
+    print(ui == ui2)
     # ele1 = UIElement()
     # ele2 = UIElement()
     # ele1.tag = 'a'
