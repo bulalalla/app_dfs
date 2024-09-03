@@ -6,7 +6,7 @@
 前提：不同的组件要有不同的content-desc和text描述
 1. 若发现某个xml树的node属性是不可点击，但实际是可以点击的，那么在此xml树此node网上找，一定有一个是可点击的，而且不会往上找很多即可找到
 2. 对于两个界面，如果他们的resource-id大部分相同，则认为是相同界面（可以附带 bounds 来一起判别两个界面是否相同）
-3. 对于一个组件，id 可以是 resource-id + bounds or+ text or+ content-desc，双描述id (resource-id + bounds, resource-id + text + content-desc) 前者弱判定，后者强判定
+3. 对于一个组件，id 可以是 resource-id + bounds or+ text or+ content-desc，双描述id (resource-id + bounds, resource-id + text + content-desc) 前者弱判定，后者强判定。
 resource-id + bounds: 决定了这个组件的类别以及出现的位置
 resource-id + content-desc + text: 决定了这个组件的类别和内容
 弱判定相同的组件，希望认为是同一类，强判定相同的，就是同一个组件，对于同一类/个组件，操作后应该记录在一起，如 某个位置每次加载会改变内容，这是应判定为同一类，操作应该记录在一起；某个位置每次加载内容都不变，这应该判定为同一个，操作也应该记录在一起
@@ -45,3 +45,15 @@ resource-id + content-desc + text: 决定了这个组件的类别和内容
 
 #### 问题日志
 1. 发现有限组件无法获取到：抖音搜索页面无法获取推荐的那些条目，文字
+
+
+
+#### 关于id的思考记录
+静态组件：可以借助屏幕 + 位置 + 内容判定是否是同一个组件
+动态组件：可以借助屏幕 + 类别 ... 判别是否是同一类组件
+
+屏幕：如何判断是同一个屏幕？
+对于静态屏幕：xml相同即可判断相同
+对于动态屏幕：至少结构应该相同，...
+
+手动分配id： {id: (values, ...), ...}
