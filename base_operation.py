@@ -12,9 +12,9 @@ class BaseOperator(metaclass=ABCMeta):
     Method click(): 传入(x, y)坐标，执行点击对应屏幕位置
     Method scroll(): 传入两个二维坐标，模拟手指从 (x1, y1) -> (x2, y2) 滑动
     Method input(): 给定一个目标，向其输入文本内容
-    Method clear_background(): 执行一系列操作，模拟执行清理后台应用程序进程
     Method press_key(): 模拟按压某个按键，如home键
     Method dump_screen(): 获取整个屏幕的xml
+    Method start_activity(): 启动APP
     """
 
     @abstractmethod
@@ -41,10 +41,14 @@ class BaseOperator(metaclass=ABCMeta):
     def dump_screen():
         pass
 
+    @abstractmethod
+    def start_app():
+        pass
+
 
 class MumuOperator(BaseOperator):
 
-    SLEEP_AFTER_CLICK = 1
+    SLEEP_AFTER_OP = 1
 
     def __init__(self, address="127.0.0.1", port=7555, serial=None) -> None:
         try:
@@ -55,31 +59,20 @@ class MumuOperator(BaseOperator):
 
     def click(self, x: float | int, y: float | int):
         self.device.click(x, y)
-        sleep(self.SLEEP_AFTER_CLICK)
+        sleep(self.SLEEP_AFTER_OP)
 
     def scroll(self, x1, y1, x2, y2, duration=0.5):
         self.device.swipe(fx=x1, fy=y1, tx=x2, ty=y2, duration=duration)
+        sleep(self.SLEEP_AFTER_OP)
 
     def input(self, text: str, x: float | int, y: float | int):
         self.click(x=x, y=y)
         self.device.send_keys(text=text, clear=True)
-
-    def clear_background(self):
-        self.device.press(KEYCODE_HOME)
-        self.press_key(KEYCODE_HOME)
-        self.press_key(KEYCODE_APP_SWITCH)
-        content = self.device.dump_hierarchy()
-        # print(content)
-        ui = ds.UI(xml_str=content)
-        for element in ui.clickable_elements:
-            if '清除' in element.text:
-                self.click(*element.center)
-            elif 'clear' in element.text:
-                self.click(*element.center)
+        sleep(self.SLEEP_AFTER_OP)
     
     def press_key(self, keycode):
         self.device.press(keycode)
-        sleep(self.SLEEP_AFTER_CLICK)
+        sleep(self.SLEEP_AFTER_OP)
 
     def screenshot(self,
                     filename: str | None = None,
@@ -89,6 +82,9 @@ class MumuOperator(BaseOperator):
     
     def dump_screen_xml(self, compressed, pretty, max_depth):
         return self.device.dump_hierarchy(compressed, pretty, max_depth)
+    
+    def start_app(self, package_name, start_activity):
+        self.device.app_start(package_name=package_name, activity=start_activity, wait=True)
 
 
 # Android KeyCode
