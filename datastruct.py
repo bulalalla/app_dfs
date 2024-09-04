@@ -6,6 +6,7 @@ Any = object
 class UIElement:
 
     def __init__(self, element: ET.Element) -> None:
+        self.op_times = 0
         # 把xml node的属性赋给此对象
         for key, value in element.attrib.items():
             k = key.replace('-', '_')
@@ -34,7 +35,7 @@ class UIElement:
 
 class ScreenUI:
 
-    def __init__(self, xml_str=None, xml_filename=None) -> None:
+    def __init__(self, xml_str=None, xml_filename=None, count_dict: dict={}) -> None:
         self.id = None
         self.xml_str = ''
         self.id_list = list()
@@ -63,18 +64,42 @@ class ScreenUI:
             et_element = queue.pop()
             element = UIElement(element=et_element)
             # 对这个元素进行分类...
+            element.op_times = count_dict[element.id] if element.id in count_dict.keys() else 0
             if element.clickable:
-                self.clickable_elements.append(element)
+                self.binary_insertion(element, self.clickable_elements)
             if 'EditText' in element.ele_class:
-                self.editable_elements.append(element)
+                self.binary_insertion(element, self.editable_elements)
             if element.scrollable:
-                self.scrollable_elements.append(element)
+                self.binary_insertion(element, self.scrollable_elements)
             # 把这个元素的儿子添加到队列中
             children = [child for child in et_element]
             queue.extend(children)
             if not len(children):
                 # 如果没有子节点，那么这个节点应该作为UI id的一部分
                 self.id_list.append(element.id)
+
+    # TODO 折半插入，插入element，保持原有的数据
+    def binary_insertion(element: UIElement, element_list: list[UIElement]):
+        element_count = element.count
+
+        # 定义二分查找的左右边界
+        left, right = 0, len(element_list)
+        while left < right:
+            mid = (left + right) // 2
+            if element_list[mid].count < element_count:
+                left = mid + 1
+            else:
+                right = mid
+
+        # 在right索引处插入元素
+        while right < len(element_list) and element_list[right].count == element_count:
+            right += 1
+            
+        element_list.insert(right, element)
+        return element_list
+
+    def sort(self, count_dict: dict):
+        pass
 
     # TODO 使用树结构判断两个Screen是否相同
     def __eq__(self, value: object) -> bool:
