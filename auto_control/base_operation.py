@@ -3,8 +3,6 @@ from abc import abstractmethod, ABCMeta
 from time import sleep
 import uiautomator2 as u2
 
-import datastruct as ds
-
 
 class BaseOperator(metaclass=ABCMeta):
     """
@@ -13,7 +11,7 @@ class BaseOperator(metaclass=ABCMeta):
     Method scroll(): 传入两个二维坐标，模拟手指从 (x1, y1) -> (x2, y2) 滑动
     Method input(): 给定一个目标，向其输入文本内容
     Method press_key(): 模拟按压某个按键，如home键
-    Method dump_screen(): 获取整个屏幕的xml
+    Method dump_screen_xml(): 获取整个屏幕的xml
     Method start_activity(): 启动APP
     """
 
@@ -38,7 +36,7 @@ class BaseOperator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def dump_screen():
+    def dump_screen_xml():
         pass
 
     @abstractmethod
@@ -55,7 +53,7 @@ class MumuOperator(BaseOperator):
             os.popen(f"adb connect {address}:{port}")
             self.device = u2.connect()
         except Exception as e:
-            raise f"Exception captured when create MumuOperator object: {e.message}"
+            raise f"Exception captured when create MumuOperator object: {e.info}"
 
     def click(self, x: float | int, y: float | int):
         self.device.click(x, y)
@@ -80,11 +78,20 @@ class MumuOperator(BaseOperator):
                     display_id: int | None = None):
         return self.device.screenshot(filename, format, display_id)
     
-    def dump_screen_xml(self, compressed, pretty, max_depth):
+    def dump_screen_xml(self, compressed: bool = False, pretty: bool = False, max_depth: int | None = None):
         return self.device.dump_hierarchy(compressed, pretty, max_depth)
     
     def start_app(self, package_name, start_activity):
         self.device.app_start(package_name=package_name, activity=start_activity, wait=True)
+
+    def curr_app(self):
+        """
+        返回值类型 RunningAppInfo, 就是一个结构体，里面有三个属性 package, activity, pid
+        """
+        return self.device.app_current()
+
+    def clear_background():
+        pass
 
 
 # Android KeyCode

@@ -26,9 +26,9 @@ class UIElement:
         self.center = ((self.bounds[0][0] + self.bounds[1][0]) / 2, (self.bounds[0][1] + self.bounds[1][1]) / 2)
         # 生成id
         # self.id = (self.resource_id + bounds_str, self.resource_id + self.content_desc + self.text)
-        self.hash_value = self.compute_hash(xpath)
+        self.hash_value = self.compute_hash(self.xpath)
 
-    def compute_hash(xpath: str) -> str:
+    def compute_hash(self, xpath: str) -> str:
         # 使用 SHA-256 算法计算哈希值
         return hashlib.sha256(xpath.encode('utf-8')).hexdigest()
 
@@ -44,7 +44,7 @@ class UIElement:
 
 class ScreenUI:
 
-    def __init__(self, xml_str=None, xml_filename=None, count_dict: dict = {}) -> None:
+    def __init__(self, count_dict, xml_str=None, xml_filename=None) -> None:
         self.id = None
         self.id_list = list()
         self.clickable_elements = list()
@@ -53,23 +53,23 @@ class ScreenUI:
         self.editable_elements = list()
         # 读取数据
         if xml_filename:
-            root_element = ET.parse(xml_filename).getroot()
+            self.root_element = ET.parse(xml_filename).getroot()
         else:
-            root_element = ET.fromstring(xml_str)
+            self.root_element = ET.fromstring(xml_str)
 
         # 遍历整个dom树并计算xpath
-        self._traverse(root_element, count_dict, xpath='')
-
+        self._traverse(self.root_element, count_dict, xpath='')
+    
     def _traverse(self, element, count_dict, xpath):
         for i, child in enumerate(element):
-            child_xpath = f"{xpath}/{child.tag}[{i + 1}]"
+            child_xpath = f"{xpath}/{child.attrib['class']}[{i + 1}]"
             ui_element = UIElement(element=child, xpath=child_xpath)
-            ui_element.op_times = count_dict.get(ui_element.id, 0)
+            ui_element.op_times = count_dict.get(ui_element.hash_value, 0)
 
             # 分类
             if ui_element.clickable:
                 self.binary_insertion(ui_element, self.clickable_elements)
-            if 'EditText' in ui_element.ele_class:
+            if 'EditText' in ui_element.tag:
                 self.binary_insertion(ui_element, self.editable_elements)
             if ui_element.scrollable:
                 self.binary_insertion(ui_element, self.scrollable_elements)
@@ -94,6 +94,19 @@ class ScreenUI:
         element_list.insert(right, element)
         return element_list
 
+    # 根据xpath找xml是否拥有此元素，若有则返回True，否则返回False
+    def has_element(self, element):
+        for ele in self.clickable_elements:
+            if ele.xpath == element.xpath:
+                return True
+        for ele in self.scrollable_elements:
+            if ele.xpath == element.xpath:
+                return True
+        for ele in self.editable_elements:
+            if ele.xpath == element.xpath:
+                return True
+        return False
+
     def __eq__(self, value: object) -> bool:
         if isinstance(value, ScreenUI):
             eq_count = 0
@@ -110,10 +123,14 @@ if __name__ == '__main__':
     with open('./dump2.xml', 'r', encoding='utf-8') as file:
         content = file.read()
     ui = ScreenUI(xml_str=content)
-    with open('./dump3.xml', 'r', encoding='utf-8') as file:
-        content = file.read()
+    # with open('./dump3.xml', 'r', encoding='utf-8') as file:
+    #     content = file.read()
     ui2 = ScreenUI(xml_str=content)
+    for ele in ui.clickable_elements:
+        print(ele.hash_value)
 
-    print(ui.id_list)
-    print(ui2.id_list)
-    print(ui == ui2)
+    # flag = ui.has_element(element="/android.widget.FrameLayout[1]/android.widget.LinearLayout[1]/android.widget.FrameLayout[1]/android.widget.FrameLayout[1]/android.widget.FrameLayout[2]/android.view.ViewGroup[1]/android.view.ViewGroup[1]")
+    # print(flag)
+    # print(ui.id_list)
+    # print(ui2.id_list)
+    # print(ui == ui2)
