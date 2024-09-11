@@ -1,7 +1,8 @@
 from bisect import bisect_right
 import copy
-from base_operation import *
-from datastruct import *
+from auto_control.base_operation import *
+from auto_control.datastruct import *
+
 
 
 class Controler:
@@ -112,11 +113,4 @@ class Controler:
             screen = ScreenUI(count_dict=self.ui_element_op_times, xml_str=self.operator.dump_screen_xml())
             self.app_dfs(screen, 0)
         print("测试结束.")
-
-
-if __name__ == '__main__':
-
-    controler = Controler(Operator=MumuOperator, 
-                          app_package_name="com.android.settings",
-                          app_activity_name="com.android.settings.Settings")
-    controler.run()
+    
