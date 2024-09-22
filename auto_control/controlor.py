@@ -1,7 +1,7 @@
 from bisect import bisect_right
 import copy
-from auto_control.base_operation import *
-from auto_control.datastruct import *
+from base_operation import *
+from datastruct import *
 
 
 
