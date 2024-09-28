@@ -46,6 +46,7 @@ class Task:
                     )
                 self.status = "RUNNING"
                 self.process = process
+                print(f"开始执行后台任务: {self.id}")
                 time.sleep(1)   # 起码给出1秒的时间执行
             except:
                 self.status = "ERROR"
@@ -56,11 +57,11 @@ class Task:
         """
         if self.status == "RUNNING":
             if self.process:
-                if self.process.poll():
-                    self.status = "RUN_OVER"
-                else:
-                    self.process.terminate()
-                    self.status = "RUN_OVER"
+                self.process.terminate()
+                time.sleep(5)
+                self.process.wait()
+                self.status = "RUN_OVER"
+                print(f"任务执行完毕: {self.id}")
         elif self.status == "CREATE":
             print(f"you should run {self.id} first")
 

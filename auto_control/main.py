@@ -7,7 +7,8 @@ import re
 def run_background_task():
     # task = tuple(cmd: list[], )
     tasks_desc = {
-        'capture_traffic': (['adb', 'shell', 'tcpdump', '-i any', '-w /data/local/tmp/{filename}.pcap'], 1),
+        'tcpdump_capture_traffic': (['adb', 'shell', 'tcpdump', '-i any not port 5555 and not port 7555 and not port 5553 and not port 5554 and not port 5353', 
+                             f"-w /data/local/tmp/{parameters['pcap_filename']}.pcap"], 1),
         'mitm_proxy': (['mitmdump', '-s xx.py', '--upstream=127.0.0.1:7890', '-p 18080'], 1),
     }
     tasks = []
@@ -36,20 +37,20 @@ def init():
                                      usage="",
                                      description="本工具为APP自动测试工具，它会连接本地的模拟器默认127.0.0.1:7555端口，安装指定的APP，并自动产生尽可能多和不同的点击行为",
                                      add_help=True)
-    parser.add_argument("--apk", help="apk, 待测试APP安装包的位置", default="E:/apks/com.weaver.app.prod.apk")
+    parser.add_argument("--apk", help="apk, 待测试APP安装包的位置", default="E:/apks/Washington_Post_6.42.1.apk")
     parser.add_argument("--device", help="device, 模拟器adb服务的运行端口，<ip_addr>:<port>", default="127.0.0.1:7555")
-    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成", default=10)
-    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default="10")
-    parser.add_argument("--script", help="中间人的脚本路径", default="xx.py")
-    parser.add_argument("--pcapfile", help="测试过程中，APP产生的流量的路径", default="<app_package_name>.pcap")
+    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成", default=5)
+    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default=2)
+    parser.add_argument("--script", help="中间人的脚本路径", default="E:\\work\\app_auto_test\\mitmproxy\\mitmproxy_script.py")
+    parser.add_argument("--pcapfile", help="测试过程中，APP产生的流量的路径", default="default")
 
     res = dict()
     param = parser.parse_args()
 
     app_abs_path = param.apk
     device = param.device
-    for_round = param.round
-    dfs_depth = param.depth
+    for_round = int(param.round)
+    dfs_depth = int(param.depth)
     mitm_script_abs = param.script
     pcap_filename = param.pcapfile
 
@@ -62,6 +63,7 @@ def init():
     package_pattern = re.search(r"package: name='([^']+)'", aapt_output)
     activity_pattern = re.search(r"launchable-activity: name='([^']+)'", aapt_output)
 
+    # 如果没有获取到名称，就不继续执行
     if package_pattern and activity_pattern:
         app_package_name = package_pattern.group(1)
         app_activity_name = activity_pattern.group(1)
@@ -70,8 +72,9 @@ def init():
 
     # 连接emulator 并 获取root
     connect_proccess = subprocess.Popen(f"adb connect {device}", stdout=subprocess.PIPE, shell=True)
+    sleep(1)
     root_proccess = subprocess.Popen(f"adb root", stdout=subprocess.PIPE, shell=True)
-    time.sleep(2)
+    sleep(1)
     connect_output = connect_proccess.communicate()[0].decode()
     # TODO 暂时认为不会连接失败
     if "连接失败的判断":
@@ -79,7 +82,7 @@ def init():
 
     # 安装app
     install_process = subprocess.Popen(f'adb install "{app_abs_path}"', stdout=subprocess.PIPE, shell=True)
-    time.sleep(2)
+    sleep(2)
     install_output = install_process.communicate()[0].decode()
     if 'unsuccessful' in install_output or 'Unsuccessful' in install_output:
         raise f"init error, can't install {app_abs_path} to emulator, maybe apk's arch not match with emulator's arch"
@@ -102,21 +105,29 @@ def init():
 if __name__ == '__main__':
     # 接收参数 并 计算 app的包名和启动activity
     parameters = init()
-    
+    print(parameters)
     # app自动测试前需要执行的任务
     task_manager = run_background_task()
 
     # 创建控制器
     controler = Controler(Operator=MumuOperator,
                           app_activity_name=parameters['app_activity_name'],
-                          app_package_name=parameters['app_package_name'])
+                          app_package_name=parameters['app_package_name'],
+                          max_depth=parameters["dfs_depth"],
+                          max_loop=parameters["for_round"],
+                          )
                           
     # 开始执行app_dfs
-    controler.run()
-
-    # 创建收尾的后台任务并执行
-    task_manager.add_and_run(Task(task_id="pull_pcap", task_cmd=["adb", "pull", "/data/local/tmp/{filename}.pcap", "./resutls/"], slow=False))
-    # 杀死所有进程
-    task_manager.stop_all()
-    
+    try:
+        controler.run()
+        # pass
+    except:
+        pass
+    finally:
+        print("清理进程..")
+        # 杀死所有进程
+        task_manager.stop_all()
+        # 创建收尾的后台任务并执行
+        task_manager.add_and_run(Task(task_id="pull_pcap", task_cmd=["adb", "pull", f"/data/local/tmp/{parameters['pcap_filename']}.pcap", "./results/traffic/"], slow=False))
+        print("测试结束")
 

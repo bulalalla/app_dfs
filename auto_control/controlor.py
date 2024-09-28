@@ -47,7 +47,7 @@ class Controler:
 
     # TODO 点击元素
     def click_view(self, element: UIElement):
-        if self.operator.curr_app().package != self.app_package_name:
+        if self.operator.curr_app()["package"] != self.app_package_name:
             return False
         # 1. 检查是否包含此元素
         if self.has_element(element):
@@ -81,7 +81,7 @@ class Controler:
     def app_dfs(self, screen: ScreenUI, curr_depth: int) -> None:
         if curr_depth > self.max_depth:
             return
-        if self.operator.curr_app().package != self.app_package_name:
+        if self.operator.curr_app()["package"] != self.app_package_name:
             return False
 
         # 执行界面不会改变的操作
@@ -109,7 +109,7 @@ class Controler:
         for _ in range(self.max_loop):
             self.clear_background()
             self.operator.start_app(self.app_package_name, self.app_activity_name)
-            sleep(2)
+            sleep(5)
             screen = ScreenUI(count_dict=self.ui_element_op_times, xml_str=self.operator.dump_screen_xml())
             self.app_dfs(screen, 0)
         print("测试结束.")
