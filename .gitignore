@@ -2,3 +2,4 @@ __pycache__/
 .vscode/
 *.xml
 results/
+auto_control/auto.ps1

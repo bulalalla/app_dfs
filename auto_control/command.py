@@ -1,6 +1,7 @@
 import subprocess
 import signal
 import time
+import re
 
 
 class Task:
@@ -21,7 +22,7 @@ class Task:
         self.status = "CREATE"
         self.process: subprocess.Popen = None
         self.exe_result_str: str = None
-        self.exe_result: dict = None
+        self.exe_result: dict = {}
         self.res_dealwith_tbl = {
             "": self.dealwtih_result_str
         }
@@ -46,7 +47,7 @@ class Task:
                     )
                 self.status = "RUNNING"
                 self.process = process
-                print(f"开始执行后台任务: {self.id}")
+                print(f"start task: {self.id}")
                 time.sleep(1)   # 起码给出1秒的时间执行
             except:
                 self.status = "ERROR"
@@ -58,10 +59,9 @@ class Task:
         if self.status == "RUNNING":
             if self.process:
                 self.process.terminate()
-                time.sleep(5)
                 self.process.wait()
                 self.status = "RUN_OVER"
-                print(f"任务执行完毕: {self.id}")
+                print(f"end   task: {self.id}")
         elif self.status == "CREATE":
             print(f"you should run {self.id} first")
 
@@ -69,14 +69,17 @@ class Task:
         """
             接收并处理task的标准输出
         """
-        if self.process.poll() and self.status in ["CREATE", "RUNNING"]:
-            self.status = "RUN_OVER"
+        if self.status == "RUNNING":
+            self.stop()
+        elif self.status == "CREATE":
+            print(f"you should run {self.id} first.")
+        
         if self.status == "RUN_OVER":        
-            self.exe_result_str = self.process.stdout.read()
+            self.exe_result_str = self.process.communicate()[0].decode()
             # TODO 对运行结果的标准输出做处理
-            self.exe_result = {}
             self.status = "RECV"
-            return self.exe_result
+            return self.exe_result_str
+        
 
     def is_running(self):
         if self.status == "RUNNING" and not self.process.poll():
@@ -90,11 +93,44 @@ class Task:
     def dealwtih_result_str(self):
         pass
 
+    def dealwith_adb(self):
+        res_str = self.exe_result_str.lower()
+        if "unsuccess" in res_str or "cannot" in res_str or "failed" in res_str:
+            self.status = "ERROR"
+            return -1
+        return 0
+    
+    def dealwith_aapt(self):
+        aapt_output = self.process.communicate()[0].decode()
+        # 筛选出 package 和 activity 信息
+        package_pattern = re.search(r"package: name='([^']+)'", aapt_output)
+        activity_pattern = re.search(r"launchable-activity: name='([^']+)'", aapt_output)
+
+        # 如果没有获取到名称，就不继续执行
+        if package_pattern and activity_pattern:
+            self.exe_result.update({
+                "app_package_name": package_pattern.group(1),
+                "app_activity_name": activity_pattern.group(1)
+            })
+        else:
+            raise "init error, not find app_package_name or app_activity_name"
+        return 0
+
+    def dealwith_tcpdump(self):
+        return 0
+
+    def dealwith_mitmproxy(self):
+        return 0
+
+
 
 class TaskManager:
     
     def __init__(self, tasks: list[Task] | None) -> None:
-        self.tasks_list = tasks
+        if tasks == None:
+            self.tasks_list = list()
+        else:
+            self.tasks_list = tasks
 
     def add_and_run(self, task: Task):
         self.tasks_list.append(task)
@@ -159,15 +195,49 @@ class TaskManager:
 
 
 if __name__ == "__main__":
-    l = [Task(task_id='abc', task_cmd=['abc'], slow=True)]
-    def fu(a):
-        a.append(Task(task_id='abc', task_cmd=['abc'], slow=True))
-        return a
-    l2 = fu(l)
-    t = l2[0]
-    t.cmd = 'hhhhhhhhhhh'
-    for task in l:
-        print(task.cmd)
+    import pandas as pd
+    import mysql.connector
 
-    for task in l2:
-        print(task.cmd)
+    # 连接到数据库
+    conn = mysql.connector.connect(
+        host='127.0.0.1',
+        user='root',
+        password='1234',
+        database='app_doe'
+    )
+
+    # 查询获取不重复的 hosts
+    query = """
+    SELECT package_name, host
+    FROM app_domain_https WHERE add_time > '2024-09-29 11:00:00'
+    GROUP BY package_name, host;
+    """
+    cursor = conn.cursor()
+    cursor.execute(query)
+
+    # 获取所有结果
+    results = cursor.fetchall()
+
+    # 将结果转换为 DataFrame
+    df = pd.DataFrame(results, columns=['package_name', 'host'])
+
+    count = 0
+    for row in df['host']:
+        print(row)
+        host = str(row)
+        count += len(host.split(','))
+    print(count)
+        
+
+
+    # 将数据透视为每个 package_name 一列
+    df_pivot = df.pivot_table(index=df.groupby('package_name').cumcount(), columns='package_name', values='host', aggfunc='first')
+
+    # 将结果保存到 Excel
+    # df_pivot.to_excel('output.xlsx', index=False)
+
+    # 关闭连接
+    cursor.close()
+    conn.close()
+
+        

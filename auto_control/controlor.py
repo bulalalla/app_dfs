@@ -6,6 +6,9 @@ from datastruct import *
 
 
 class Controler:
+    """
+        Controler是对Operator的封装，提供更高级的操作，如清理后台任务、登录账号、下载APP等
+    """
 
     def __init__(self,
                  Operator,
@@ -105,11 +108,15 @@ class Controler:
                 continue
 
     def run(self):
+        # 此时 抓包、中间人代理、app包名、启动activity都已确定。
+        # 开始执行自动控制
         print("开始测试...")
         for _ in range(self.max_loop):
             self.clear_background()
             self.operator.start_app(self.app_package_name, self.app_activity_name)
-            sleep(5)
+            # 打开应用程序可能需要一点时间
+            sleep(20)
+            
             screen = ScreenUI(count_dict=self.ui_element_op_times, xml_str=self.operator.dump_screen_xml())
             self.app_dfs(screen, 0)
         print("测试结束.")

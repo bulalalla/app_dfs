@@ -26,12 +26,12 @@ class Events:
                                            host='localhost',
                                            port=3306,
                                            database='app_doe')
-        self.packet_name = 'test'
+        self.packet_name = self.get_current_app()
 
     def get_current_app(self):
-        # with open('E:/work/APP_DoE_Test/code/src/auto_test/CurrentAPP', 'r', encoding='utf-8') as file:
-        #     self.packet_name = str(file.read())
-        self.packet_name = "ins_nothing_register2"
+        with open('E:\\work\\app_auto_test\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
+            return str(file.read())
+        # self.packet_name = "ins_nothing_register2"
 
     def dns_request(self, flow: mitmproxy.dns.DNSFlow):
         print("DNS流量")
