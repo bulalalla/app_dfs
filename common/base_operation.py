@@ -1,7 +1,10 @@
 import os
 from abc import abstractmethod, ABCMeta
+from typing import Union, Optional, List, Dict
 from time import sleep
 import uiautomator2 as u2
+
+from .datastruct import ScreenShot
 
 
 class BaseOperator(metaclass=ABCMeta):
@@ -36,13 +39,16 @@ class BaseOperator(metaclass=ABCMeta):
         pass
 
     @abstractmethod
-    def dump_screen_xml():
+    def dump_hierarchy():
         pass
 
     @abstractmethod
     def start_app():
         pass
 
+    @abstractmethod
+    def shell():
+        pass
 
 class MumuOperator(BaseOperator):
 
@@ -51,6 +57,7 @@ class MumuOperator(BaseOperator):
     def __init__(self, address="127.0.0.1", port=7555, serial=None) -> None:
         try:
             os.popen(f"adb connect {address}:{port}")
+            sleep(1)
             self.device = u2.connect()
         except Exception as e:
             raise f"Exception captured when create MumuOperator object: {e.info}"
@@ -78,7 +85,7 @@ class MumuOperator(BaseOperator):
                     display_id: int | None = None):
         return self.device.screenshot(filename, format, display_id)
     
-    def dump_screen_xml(self, compressed: bool = False, pretty: bool = False, max_depth: int | None = None):
+    def dump_hierarchy(self, compressed: bool = False, pretty: bool = False, max_depth: int | None = None):
         return self.device.dump_hierarchy(compressed, pretty, max_depth)
     
     def start_app(self, package_name, start_activity):
@@ -90,8 +97,20 @@ class MumuOperator(BaseOperator):
         """
         return self.device.app_current()
 
-    def clear_background():
-        pass
+    def clear_background(self):
+        self.press_key(KEYCODE_APP_SWITCH)
+        screen = ScreenShot(self.dump_hierarchy())
+        elements = screen.xpath('.//*[contains(@text, "清除")]')
+        self.click(*elements[0].center)
+
+    def shell(self, cmdargs: Union[str, List[str]], timeout=60):
+        return self.device.shell(cmdargs, timeout)
+
+    def pull(self, src: str, dst: str):
+        return self.device.pull(src, dst)
+    
+    def app_uninstall(self, package_name):
+        return self.device.app_uninstall(package_name)
 
 
 # Android KeyCode
@@ -184,9 +203,9 @@ KEYCODE_Z = 54   # 按键’Z’
 
 
 if __name__ == '__main__':
-    d = u2.connect()
+    # d = u2.connect()
     print("begin")
-    # mumu_op = MumuOperator(device=d)
-    # mumu_op.clear_background()
+    mumu_op = MumuOperator(address="127.0.0.1", port=7555)
+    mumu_op.clear_background()
 
     print("end")

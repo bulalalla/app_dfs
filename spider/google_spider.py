@@ -1,13 +1,14 @@
-from typing import Optional, Union
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import time
 import re
+from typing import Optional, Union
 import pandas as pd
 from tqdm import tqdm
 
-from command import Task, TaskManager
-import base_operation as bo
-from base_operation import MumuOperator
-from datastruct import *
+from common.base_operation import *
+from common.datastruct import *
 
 
 class GoogleSpider:
@@ -220,7 +221,7 @@ class GoogleSpider:
                 print("Didn't found the search box")
                 return False
             self.operator.input(input_text, *search_texteara.center)
-            self.operator.press_key(bo.KEYCODE_ENTER)
+            self.operator.press_key(self.operator.KEYCODE_ENTER)
             time.sleep(2)   # 等待搜索结果
             return True
 
@@ -371,7 +372,7 @@ class GoogleSpider:
             """
                 重启Google Play Store
             """
-            self.operator.press_key(bo.KEYCODE_HOME)
+            self.operator.press_key(KEYCODE_HOME)
             self.operator.clear_background()
             self.operator.start_app(self.play_package, self.play_activity)
             time.sleep(2)

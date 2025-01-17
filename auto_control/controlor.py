@@ -1,8 +1,11 @@
-from bisect import bisect_right
-import copy
-from .base_operation import *
-from .datastruct import *
+# 保证能找到common
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+import copy
+from common.base_operation import *
+from common.datastruct import *
 
 
 class Controler:
@@ -37,19 +40,19 @@ class Controler:
 
     # TODO 判断当前界面是否包含此元素
     def has_element(self, element):
-        now_screen = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
+        now_screen = ScreenShot(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
         return now_screen.has_element(element)
 
     # TODO 在点击操作开始之前，向文本框输入内容
-    def edit_text_view(self, editable_list: list[UIElement], pre_text: dict):
+    def edit_text_view(self, editable_list: list[ScreenShot], pre_text: dict):
         pass
 
     # TODO 在点击操作开始之前，滑动View
-    def scroll_view(self, scroll_list: list[UIElement]):
+    def scroll_view(self, scroll_list: list[ScreenShot]):
         pass
 
     # TODO 点击元素
-    def click_view(self, element: UIElement):
+    def click_view(self, element: ScreenShot):
         if self.operator.curr_app()["package"] != self.app_package_name:
             return False
         # 1. 检查是否包含此元素
@@ -69,7 +72,7 @@ class Controler:
         self.operator.press_key(KEYCODE_APP_SWITCH)
         content = self.operator.dump_screen_xml()
         # print(content)
-        ui = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=content)
+        ui = ScreenShot(count_dict=self.ui_element_op_counts, xml_str=content)
         for element in ui.clickable_elements:
             if '清除' in element.text:
                 self.operator.click(*element.center)
@@ -81,7 +84,7 @@ class Controler:
         return False
 
     # app自动遍历
-    def app_dfs(self, screen: ScreenUI, curr_depth: int) -> None:
+    def app_dfs(self, screen: ScreenShot, curr_depth: int) -> None:
         if curr_depth > self.max_depth:
             return
         if self.operator.curr_app()["package"] != self.app_package_name:
@@ -95,7 +98,7 @@ class Controler:
         for element in screen.clickable_elements:
             # 是否点击成功
             if self.click_view(element):
-                now_screen = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
+                now_screen = ScreenShot(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
                 if screen == now_screen:
                     continue
                 # 否则 判断是否进入新的界面
@@ -117,7 +120,7 @@ class Controler:
             # 打开应用程序可能需要一点时间
             sleep(3)
             # 获取第一个界面，开始遍历
-            screen = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
+            screen = ScreenShot(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
             self.app_dfs(screen, 0)
         print("测试结束.")
     
