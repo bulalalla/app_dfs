@@ -4,7 +4,7 @@ from typing import Union, Optional, List, Dict
 from time import sleep
 import uiautomator2 as u2
 
-from .datastruct import ScreenShot
+from .datastruct import UIBlock
 
 
 class BaseOperator(metaclass=ABCMeta):
@@ -99,7 +99,7 @@ class MumuOperator(BaseOperator):
 
     def clear_background(self):
         self.press_key(KEYCODE_APP_SWITCH)
-        screen = ScreenShot(self.dump_hierarchy())
+        screen = UIBlock(self.dump_hierarchy())
         elements = screen.xpath('.//*[contains(@text, "清除")]')
         self.click(*elements[0].center)
 

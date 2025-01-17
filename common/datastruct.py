@@ -22,11 +22,11 @@ def str2bytes(v: Union[str, bytes]) -> bytes:
     return v.encode("utf-8")
 
 
-class ScreenShot():
+class UIBlock():
     """
         表示一块 xml 树的信息
     """
-    def __init__(self, xml_str: str=None, xml_filename: str="", lxml_element: lxml.etree._Element=None) -> None:
+    def __init__(self, xml_str: str=None, xml_filename: str="", lxml_element: lxml.etree._Element=None, activity: str=None) -> None:
         if os.path.exists(xml_filename):
             element = etree.parse(xml_filename).getroot()
         elif xml_str is not None:
@@ -44,9 +44,15 @@ class ScreenShot():
         self._etree: etree._ElementTree = etree.ElementTree(element)
         self.root_element: etree._Element = element
 
-        # 页面id
-        self.id_list = []
-        self.id: str=None
+        # UIBlock的 Activity 名称
+        self.activity = activity
+    
+    @functools.cached_property
+    def id(self):
+        """
+            UIBlock的id 这里的计算方法只能是近似方法
+        """
+        return ' '.join(map(str, [self.activity, self.tag, self.text, self.tail, *self.center, self.attrib.get('content-desc')]))
     
     @functools.cached_property
     def bounds(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
@@ -88,11 +94,12 @@ class ScreenShot():
     
     @functools.cached_property
     def long_clickable_elements(self):
-        return self.xpath('.//*[@long-clickable="true")]')
+        return self.xpath('.//*[@longClickable="true")]')
     
     @functools.cached_property
     def editable_elements(self):
-        return self.xpath('.//*[contains(name(), "EditText")]')
+        res = self.xpath('.//*[contains(name(), "EditText")]')
+        return res
     
     def getroot(self):
         """
@@ -102,18 +109,10 @@ class ScreenShot():
     
     @functools.cached_property
     def root_element(self):
-        return self._etree.getroot()
-
-    @functools.cached_property
-    def id(self):
-        """
-            页面的id，请在访问过 self.elements后或调用 self._traverse()后，再访问此值
-        """
-        pass
-        return         
+        return self._etree.getroot()        
         
     def __eq__(self, value: object) -> bool:
-        if isinstance(value, ScreenShot):
+        if isinstance(value, UIBlock):
             eq_count = 0
             for ele1 in self.id_list:
                 for ele2 in value.id_list:
@@ -127,8 +126,8 @@ class ScreenShot():
         et_element = self._etree.xpath(path)
         if et_element is not None:
             if isinstance(et_element, list):
-                return [ScreenShot(lxml_element=ele) for ele in et_element]
-            return ScreenShot(lxml_element=et_element)
+                return [UIBlock(lxml_element=ele, activity=self.activity) for ele in et_element]
+            return UIBlock(lxml_element=et_element, activity=self.activity)
         return None
 
     def find(self, path, namespaces: Dict[str, str] | None = None):
@@ -137,7 +136,7 @@ class ScreenShot():
         """
         et_element = self._etree.find(path=path, namespaces=namespaces)
         if et_element is not None:
-            return ScreenShot(lxml_element=et_element)
+            return UIBlock(lxml_element=et_element, activity=self.activity)
         return None
 
     def findall(self, path, namespaces: Dict[str, str] | None = None):
@@ -147,7 +146,7 @@ class ScreenShot():
         et_elements = self._etree.findall(path=path, namespaces=namespaces)
         results = []
         for et_element in et_elements:    
-            results.append(ScreenShot(lxml_element=et_element))
+            results.append(UIBlock(lxml_element=et_element, activity=self.activity))
         if len(results):
             return results
         return None
@@ -158,7 +157,7 @@ class ScreenShot():
         """
         et_element = self._etree.findtext(path=path, default=default, namespaces=namespaces)
         if et_element is not None:
-            return ScreenShot(lxml_element=et_element)
+            return UIBlock(lxml_element=et_element, activity=self.activity)
         return None
 
     # TODO 一个绝对路径可以加一些
@@ -197,7 +196,7 @@ def parse_xpath(xpath: str):
     return parsed_parts
 
 
-def wait_until(operator: u2.Device, xpath: str, timeout=10, retry=3) -> Optional[ScreenShot]:
+def wait_until(operator: u2.Device, xpath: str, timeout=10, retry=3) -> Optional[UIBlock]:
     """
         等待屏幕直到出现某个元素，将屏幕对象返回
         param operator: 设备操作器
@@ -210,7 +209,7 @@ def wait_until(operator: u2.Device, xpath: str, timeout=10, retry=3) -> Optional
     for _ in range(retry):
         start_time = time.time()
         while True:
-            screen = ScreenShot(xml_str=operator.dump_hierarchy())
+            screen = UIBlock(xml_str=operator.dump_hierarchy())
             ele = screen.find(path=xpath)
             if ele is not None:
                 print(f"Found {xpath}")
@@ -226,13 +225,7 @@ def wait_until(operator: u2.Device, xpath: str, timeout=10, retry=3) -> Optional
 if __name__ == '__main__':
     d = u2.connect()
 
-    s = ScreenShot(xml_str=d.dump_hierarchy())
+    s = UIBlock(xml_str=d.dump_hierarchy())
     for ele in s.editable_elements:
-        print(ele.tag, ele.text)
-
-    ui = wait_until(d, './/androidx.compose.ui.platform.ComposeView[1]/android.view.View[1]/android.view.View[3]/android.view.View[1]/android.view.View[2]/android.widget.TextView[1]')
-    if ui is not None:
-        ele = ui.find('.//androidx.compose.ui.platform.ComposeView[1]/android.view.View[1]/android.view.View[3]/android.view.View[1]/android.view.View[2]/android.widget.TextView[1]')
-        print(f"找到, {ele.attrib['text']}")
-    else:
-        print("未找到")
+        print(ele.id)
+    print('end')

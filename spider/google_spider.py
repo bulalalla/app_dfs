@@ -60,7 +60,7 @@ class GoogleSpider:
         """
         self.target_device_type = target
 
-    def app_info(self, app_element: ScreenShot, ) -> Dict:
+    def app_info(self, app_element: UIBlock, ) -> Dict:
         """
             收集某个APP的信息
             param app_element: 代表rank页面一个APP的条目
@@ -155,7 +155,7 @@ class GoogleSpider:
         apps_info = []
         try:
             while True:
-                screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+                screen = UIBlock(xml_str=self.operator.dump_hierarchy())
                 # 获取每个APP条目
                 apps = screen.findall(path='.//androidx.compose.ui.platform.ComposeView/android.view.View[1]/android.view.View[4]/android.view.View')
                 flag = False
@@ -209,13 +209,13 @@ class GoogleSpider:
                 搜索栏中输入内容并搜索 进入第一个搜到的APP 返回此界面的APP元素
             """
             # 1. 点击搜索按钮，进入搜索页面
-            screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+            screen = UIBlock(xml_str=self.operator.dump_hierarchy())
             search_button = screen.find('.//*[@text="搜索"]')
             if search_button:
                 self.operator.click(*search_button.center)
             
             # 2. 输入并搜索
-            screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+            screen = UIBlock(xml_str=self.operator.dump_hierarchy())
             search_texteara = screen.find('.//*[@text="搜索应用和游戏"]')
             if not search_texteara:
                 print("Didn't found the search box")
@@ -265,7 +265,7 @@ class GoogleSpider:
             progress = 0
             # 循环检查进度
             while True:
-                screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+                screen = UIBlock(xml_str=self.operator.dump_hierarchy())
                 progress_elements = screen.xpath('.//*[contains(@content-desc, "%")]')
                 uninstall_button = screen.find('.//*[@text="卸载"]')
                 if progress_elements:
@@ -285,7 +285,7 @@ class GoogleSpider:
             time.sleep(3)
             print("Waiting for install...")
             while True:
-                screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+                screen = UIBlock(xml_str=self.operator.dump_hierarchy())
                 installing = screen.findall('.//*[@content-desc="正在安装..."]')
                 if not installing:
                     break
@@ -297,7 +297,7 @@ class GoogleSpider:
             下载APP
             """
             # 1. 结果有多个，找到最佳匹配（第一个）
-            screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+            screen = UIBlock(xml_str=self.operator.dump_hierarchy())
             matched_apps = screen.xpath(f'.//*[contains(@content-desc, "{app_name}")]')
             if not matched_apps:
                 matched_apps.append(screen.find('.//androidx.compose.ui.platform.ComposeView/android.view.View[1]/android.view.View[1]/android.view.View[1]/android.view.View[1]/android.view.View[2]'))
@@ -309,7 +309,7 @@ class GoogleSpider:
             # 2. 点击安装
             install_buttons = None
             for i in range(5):
-                screen = ScreenShot(xml_str=self.operator.dump_hierarchy())
+                screen = UIBlock(xml_str=self.operator.dump_hierarchy())
                 right_view = screen.find('.//androidx.compose.ui.platform.ComposeView/android.view.View[1]/android.view.View[2]')
                 
                 # 考虑两种情况：1. 平板模式，左右分栏 2. 进入主页面，无左右分栏
