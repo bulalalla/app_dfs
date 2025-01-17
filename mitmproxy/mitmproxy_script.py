@@ -1,5 +1,5 @@
 import sys
-# sys.path.append("C:/Users/HUAWEI/.conda/envs/app_test/Lib/site-packages")
+sys.path.append("E:\\anaconda3\\envs\\net\\Lib\\site-packages")
 # mitmdump -p 18080 --mode upstream:127.0.0.1:7890 -s C:\Users\HUAWEI\Desktop\middle_process.py
 import datetime
 import mitmproxy.dns
@@ -7,6 +7,34 @@ import mitmproxy.http
 import mitmproxy.tls
 import mysql.connector
 import mitmproxy
+
+{
+    'duckduckgo', 'ok'
+    'scribd', 'ok'
+    'theatlantic', 'ok' 
+    'scmp', 'ok'
+    'messenger', 'no'
+    'goodreads', 'ok'
+    'researchgate', 'ok'
+    'quora', 'ok'
+    'ok.ru', 'no'
+    'economist', 'ok'
+    'instagram', 'ok'
+    'pixnet', 'no'
+    'theguardian', 'ok'
+    'businessinsider', 'ok' 
+    'foreignpolicy', 
+    'daum', 'ok'
+    'blogger', 'ok'
+    'archive', 'ok' 
+    'indiatimes', 'ok' 
+    'line', 'ok'
+    'onedrive', 'ok'
+    'hk01', 'ok'
+    'bbc', 'ok'
+    'wsj', 'ok'
+    'hootsuite', 'ok'
+}
 
 class Events:
 
@@ -22,16 +50,16 @@ class Events:
 
     def __init__(self):
         self.cnx = mysql.connector.connect(user='root',
-                                           password='1234',
+                                           password='123456',
                                            host='localhost',
                                            port=3306,
                                            database='app_doe')
         self.packet_name = self.get_current_app()
 
     def get_current_app(self):
-        with open('E:\\work\\app_auto_test\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
-            return str(file.read())
-        # self.packet_name = "ins_nothing_register2"
+        # with open('E:\\work\\app_auto_test\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
+            # return str(file.read())
+        self.packet_name = "foreignpolicy"
 
     def dns_request(self, flow: mitmproxy.dns.DNSFlow):
         print("DNS流量")

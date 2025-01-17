@@ -1,1 +1,1 @@
-wsj.reader_sp
+com.washingtonpost.android

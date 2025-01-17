@@ -1,5 +1,5 @@
-from command import *
-from controlor import *
+from auto_control.command import *
+from auto_control.controlor import *
 import argparse
 import re
 
@@ -7,13 +7,13 @@ import re
 def init(tm: TaskManager):
     parser = argparse.ArgumentParser(prog="APP AUTO CONTOL",
                                      usage="",
-                                     description="本工具为APP自动测试工具，它会连接本地的模拟器默认127.0.0.1:7555端口，安装指定的APP，并自动产生尽可能多和不同的点击行为",
+                                     description="本工具为APP自动测试工具，它会连接本地的MuMu模拟器默认127.0.0.1:7555端口，安装指定的APP，并自动产生尽可能多和不同的点击行为",
                                      add_help=True)
-    parser.add_argument("--apk", help="apk, 待测试APP安装包的位置", default="E:/apks/Washington_Post_6.42.1.apk")
+    parser.add_argument("--apk", help="apk, 待测试APP安装包的位置", default="D:/apks/Washington Post_6.72.1_apkcombo.com.apk")
     parser.add_argument("--device", help="device, 模拟器adb服务的运行端口，<ip_addr>:<port>", default="127.0.0.1:7555")
-    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成", default=5)
-    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default=2)
-    parser.add_argument("--script", help="中间人的脚本路径", default="E:\\work\\app_auto_test\\mitmproxy\\mitmproxy_script.py")
+    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成", default=10)
+    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default=5)
+    parser.add_argument("--script", help="中间人的脚本路径", default="D:\\work\\app_auto_test\\mitmproxy\\mitmproxy_script.py")
     parser.add_argument("--pcapfile", help="测试过程中，APP产生的流量的路径", default="default.pcap")
 
     res = dict()
@@ -38,7 +38,7 @@ def init(tm: TaskManager):
         raise error_str
 
     # 获取package名和activity名
-    # Step 1: 执行 aapt 命令并使用 Select-String 模拟筛选行
+    # 使用aapt获取: 执行 aapt 命令并使用 Select-String 模拟筛选行
     tm.add_and_run(Task(task_id="aapt_dump", task_cmd=["aapt", "dump", "badging", app_abs_path], slow=False))
     task_aapt = tm.find_task(task_id="aapt_dump")
     task_aapt.recv()
@@ -54,7 +54,7 @@ def init(tm: TaskManager):
         raise error_str
     else:
         # 将currapp名字写入 .\mitmproxy\currapp.txt文件中，因为中间人脚本需要用到
-        with open("E:\\work\\app_auto_test\\mitmproxy\\currapp.txt", 'w', encoding='utf-8') as file:
+        with open(".\\mitmproxy\\currapp.txt", 'w', encoding='utf-8') as file:
             file.write(task_aapt.exe_result.get("app_package_name"))
 
     res.update({
@@ -81,6 +81,7 @@ def run_background_task(tm: TaskManager):
         Task(task_id="tcpdump_capture_traffic",
              task_cmd=['adb', 'shell', 'tcpdump', f"-w /data/local/tmp/{parameters['pcap_filename']}", '-i any not port 5555 and not port 7555 and not port 5553 and not port 5554 and not port 5353'],
              slow=True),
+        # 如果不想使用中间人代理，可以把下面的Task注释掉
         Task(task_id="mitm_proxy", task_cmd=['mitmdump', '-s', parameters['mitm_script_abs'], '--upstream=127.0.0.1:7890', '-p 18080'], slow=True)
     ]
     
@@ -134,7 +135,7 @@ if __name__ == '__main__':
         task_pcap = task_manager.find_task(task_id="tcpdump_capture_traffic")
         task_pcap.stop()
         # 创建收尾的后台任务并执行
-        task_manager.add_and_run(Task(task_id="pull_pcap", task_cmd=["adb", "pull", f"/data/local/tmp/{parameters['pcap_filename']}.pcap", "./results/traffic/"], slow=False))
+        task_manager.add_and_run(Task(task_id="pull_pcap", task_cmd=["adb", "pull", f"/data/local/tmp/{parameters['pcap_filename']}", "./results/traffic/"], slow=False))
         task_manager.add_and_run(Task(task_id="uninstall", task_cmd=["adb", "uninstall", parameters["app_package_name"]], slow=False))
     except:
         pass

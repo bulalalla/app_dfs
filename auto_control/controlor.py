@@ -1,13 +1,13 @@
 from bisect import bisect_right
 import copy
-from base_operation import *
-from datastruct import *
+from .base_operation import *
+from .datastruct import *
 
 
 
 class Controler:
     """
-        Controler是对Operator的封装，提供更高级的操作，如清理后台任务、登录账号、下载APP等
+        Controler是对各个平台Operator的封装，应提供更高级的操作，如清理后台任务、登录账号、下载APP等
     """
 
     def __init__(self,
@@ -26,7 +26,7 @@ class Controler:
         self.ui_element_record = list()
         # self.screen_count = 0
         # self.ui_element_count = 0
-        self.ui_element_op_times = dict()
+        self.ui_element_op_counts = dict()
         self.address = address
         self.port = port
         self.app_package_name = app_package_name
@@ -37,7 +37,7 @@ class Controler:
 
     # TODO 判断当前界面是否包含此元素
     def has_element(self, element):
-        now_screen = ScreenUI(count_dict=self.ui_element_op_times, xml_str=self.operator.dump_screen_xml())
+        now_screen = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
         return now_screen.has_element(element)
 
     # TODO 在点击操作开始之前，向文本框输入内容
@@ -55,10 +55,10 @@ class Controler:
         # 1. 检查是否包含此元素
         if self.has_element(element):
             # 2. 根据1，决定是否执行点击操作
-            if element.hash_value in self.ui_element_op_times.keys():
-                self.ui_element_op_times[element.hash_value] += 1
+            if element.hash_value in self.ui_element_op_counts.keys():
+                self.ui_element_op_counts[element.hash_value] += 1
             else:
-                self.ui_element_op_times[element.hash_value] = 1
+                self.ui_element_op_counts[element.hash_value] = 1
             self.operator.click(*element.center)
             return True
         return False
@@ -69,7 +69,7 @@ class Controler:
         self.operator.press_key(KEYCODE_APP_SWITCH)
         content = self.operator.dump_screen_xml()
         # print(content)
-        ui = ScreenUI(count_dict=self.ui_element_op_times, xml_str=content)
+        ui = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=content)
         for element in ui.clickable_elements:
             if '清除' in element.text:
                 self.operator.click(*element.center)
@@ -80,7 +80,7 @@ class Controler:
         self.operator.press_key(KEYCODE_HOME)
         return False
 
-    # TODO app自动遍历
+    # app自动遍历
     def app_dfs(self, screen: ScreenUI, curr_depth: int) -> None:
         if curr_depth > self.max_depth:
             return
@@ -95,7 +95,7 @@ class Controler:
         for element in screen.clickable_elements:
             # 是否点击成功
             if self.click_view(element):
-                now_screen = ScreenUI(count_dict=self.ui_element_op_times, xml_str=self.operator.dump_screen_xml())
+                now_screen = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
                 if screen == now_screen:
                     continue
                 # 否则 判断是否进入新的界面
@@ -115,9 +115,9 @@ class Controler:
             self.clear_background()
             self.operator.start_app(self.app_package_name, self.app_activity_name)
             # 打开应用程序可能需要一点时间
-            sleep(20)
-            
-            screen = ScreenUI(count_dict=self.ui_element_op_times, xml_str=self.operator.dump_screen_xml())
+            sleep(3)
+            # 获取第一个界面，开始遍历
+            screen = ScreenUI(count_dict=self.ui_element_op_counts, xml_str=self.operator.dump_screen_xml())
             self.app_dfs(screen, 0)
         print("测试结束.")
     
