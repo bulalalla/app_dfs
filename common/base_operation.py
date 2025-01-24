@@ -101,7 +101,10 @@ class MumuOperator(BaseOperator):
         self.press_key(KEYCODE_APP_SWITCH)
         screen = UIBlock(self.dump_hierarchy())
         elements = screen.xpath('.//*[contains(@text, "清除")]')
-        self.click(*elements[0].center)
+        if elements:
+            self.click(*elements[0].center)
+        else:
+            self.click(100, 100)
 
     def shell(self, cmdargs: Union[str, List[str]], timeout=60):
         return self.device.shell(cmdargs, timeout)

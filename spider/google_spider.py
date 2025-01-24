@@ -221,7 +221,7 @@ class GoogleSpider:
                 print("Didn't found the search box")
                 return False
             self.operator.input(input_text, *search_texteara.center)
-            self.operator.press_key(self.operator.KEYCODE_ENTER)
+            self.operator.press_key(KEYCODE_ENTER)
             time.sleep(2)   # 等待搜索结果
             return True
 
@@ -387,8 +387,19 @@ class GoogleSpider:
             print("=" * 20, end='\n\n')
         return res
 
-if __name__ == '__main__':
 
+def download_apks():
+    device = "127.0.0.1:7555"
+    operator = MumuOperator(address=device.split(':')[0],
+                            port=int(device.split(':')[1]))
+    google_spiber = GoogleSpider(operator)
+    
+    df = pd.read_excel('./app_rank.xlsx', sheet_name='手机-社交')
+    app_infos = [{'name': v} for _, v in df['Name'].to_dict().items()]
+    google_spiber.run_apks_spider(apps_info=app_infos, save_dir='./results/社交/')
+
+
+def rank_of():
     device = "127.0.0.1:7555"
     # 0. 确定爬取目标，类别、数量、地区
     target_list = [
@@ -433,7 +444,6 @@ if __name__ == '__main__':
     # 开始
     # google_spiber.run_spider()    # 挨个爬取每个目标
     # google_spiber.rank_of('手机', '办公1')   # 仅爬取传入的目标
-    google_spiber.init_spider()
-    l = [{'name': '闲鱼'}, {'name': 'QQ'}, {'name': '淘宝'}, {'name': '京东'}]
-    google_spiber.run_apks_spider(l, './results/')
-    # google_spiber.run_apk_spider({'name': '咸鱼'}, './results/')
+
+if __name__ == '__main__':
+    download_apks()
