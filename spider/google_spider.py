@@ -267,12 +267,13 @@ class GoogleSpider:
             while True:
                 screen = UIBlock(xml_str=self.operator.dump_hierarchy())
                 progress_elements = screen.xpath('.//*[contains(@content-desc, "%")]')
-                uninstall_button = screen.find('.//*[@text="卸载"]')
+                open_button = screen.find('.//*[@text="打开"]')
                 if progress_elements:
                     match = re.search(r'(\d+)%', progress_elements[-1].attrib['content-desc'])
                     if match:
                         progress = int(match.group(1))
-                if uninstall_button:
+                # 进度条显示可能错误，如果发现打开按钮，说明已经下载好了
+                if open_button:
                     progress = 100
                 # 更新进度条
                 pbar.n = progress
@@ -300,11 +301,17 @@ class GoogleSpider:
             screen = UIBlock(xml_str=self.operator.dump_hierarchy())
             matched_apps = screen.xpath(f'.//*[contains(@content-desc, "{app_name}")]')
             if not matched_apps:
-                matched_apps.append(screen.find('.//androidx.compose.ui.platform.ComposeView/android.view.View[1]/android.view.View[1]/android.view.View[1]/android.view.View[1]/android.view.View[2]'))
-                print(f"Can't find the best match app of {app_name}, please please check the download result.")
+                may_match = screen.find('.//androidx.compose.ui.platform.ComposeView/android.view.View[1]/android.view.View[1]/android.view.View[1]/android.view.View[1]/android.view.View[2]')
+                if may_match:
+                    matched_apps.append(may_match) 
+                    print(f"Can't find the best match app of {app_name}, please please check the download result.")
+
             # 点击第一个
-            self.operator.click(*matched_apps[0].center)
-            time.sleep(1)
+            if matched_apps:
+                self.operator.click(*matched_apps[0].center)
+                time.sleep(1)
+            else:
+                pass
     
             # 2. 点击安装
             install_buttons = None
@@ -324,8 +331,8 @@ class GoogleSpider:
             print(f"Can't find install button of {app_name}")
             return False
             
+        # ==== Begin ====
         # 这里默认已经打开了 Google Play Store，且到达了首页，网络正常，登录状态正常
-
         if app_info.get('name') is None:
             print("Please input the app name")
             return False
@@ -362,7 +369,7 @@ class GoogleSpider:
             return False
         return res
 
-    def run_apks_spider(self, apps_info: List[Dict], save_dir: str) -> List[Union[bool, List[str]]]:
+    def run_apks_spider(self, apps_info: List[Dict], save_dir: str, retry: int=3) -> List[Union[bool, List[str]]]:
         """
             爬取多个app的apk文件
             param apps_info: 多个app信息的列表
@@ -378,13 +385,20 @@ class GoogleSpider:
             time.sleep(2)
 
         res = []
-        for app_info in apps_info:
+        for index, app_info in enumerate(apps_info):
             # 重启APP
             restart_play()
             # 下载APK
-            apk_path = self.run_apk_spider(app_info, save_dir)
+            apk_path = None
+            retry_count = 0
+            while not apk_path and retry_count < retry:
+                apk_path = self.run_apk_spider(app_info, save_dir)
+                retry_count += 1
+            apps_info[index].update({'apk_path': apk_path})
             res.append(apk_path)
             print("=" * 20, end='\n\n')
+        df = pd.DataFrame(apps_info)
+        df.to_excel(f'{save_dir}/desc.xlsx', index=False)
         return res
 
 
