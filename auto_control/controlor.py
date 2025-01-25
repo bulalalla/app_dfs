@@ -51,7 +51,6 @@ class Controler:
     def scroll_view(self, scroll_list: list[UIBlock]):
         pass
 
-    # TODO 点击元素
     def click_view(self, element: UIBlock):
         if self.operator.curr_app()["package"] != self.app_package_name:
             return False
