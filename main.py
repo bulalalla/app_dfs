@@ -1,4 +1,4 @@
-from auto_control.command import *
+from common.command import *
 from auto_control.controlor import *
 import argparse
 import re

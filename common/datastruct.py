@@ -46,7 +46,7 @@ class UIBlock():
 
         # UIBlock的 Activity 名称
         self.activity = activity
-    
+
     @functools.cached_property
     def id(self):
         """
@@ -86,40 +86,38 @@ class UIBlock():
     
     @functools.cached_property
     def checkable_elements(self):
-        return self.xpath('.//*[@checkable="true")]')
+        return self.xpath('.//*[@checkable="true"]')
     
     @functools.cached_property
     def scrollable_elements(self):
-        return self.xpath('.//*[@scrollable="true")]')
+        return self.xpath('.//*[@scrollable="true"]')
     
     @functools.cached_property
     def long_clickable_elements(self):
-        return self.xpath('.//*[@longClickable="true")]')
+        return self.xpath('.//*[@longClickable="true"]')
     
     @functools.cached_property
     def editable_elements(self):
         res = self.xpath('.//*[contains(name(), "EditText")]')
         return res
     
-    def getroot(self):
-        """
-            wrapper
-        """
-        return self.root_element
-    
     @functools.cached_property
     def root_element(self):
         return self._etree.getroot()        
-        
+    
+    @functools.cached_property
+    def all_sub_elements(self):
+        res = []
+        res.extend(self.clickable_elements)
+        res.extend(self.checkable_elements)
+        res.extend(self.scrollable_elements)
+        res.extend(self.long_clickable_elements)
+        res.extend(self.editable_elements)
+        return res
+
     def __eq__(self, value: object) -> bool:
         if isinstance(value, UIBlock):
-            eq_count = 0
-            for ele1 in self.id_list:
-                for ele2 in value.id_list:
-                    if ele1 == ele2:
-                        eq_count += 1
-                        break
-            return (eq_count * 2) / (len(self.id_list) + len(value.id_list)) > 0.9
+            return self.id == value.id
         return False
 
     def xpath(self, path):
@@ -180,6 +178,12 @@ class UIBlock():
             if not found:
                 return None  # 如果没有找到匹配的节点，则返回 None
         return current_node
+    
+    def has_element(self, element) -> bool:
+        """
+            判断当前界面是否包含某个元素
+        """
+        return element in self.all_sub_elements
 
 
 def parse_xpath(xpath: str):
