@@ -31,7 +31,7 @@ class GoogleSpider:
         """
             检查是否已经具有登录账号
         """
-        operator.start_app(package_name=self.play_activity, start_activity=self.play_activity)
+        self.operator.start_app(package_name=self.play_activity, start_activity=self.play_activity)
         login_button = wait_until(self.operator,
                                 xpath="./android.widget.FrameLayout[1]/android.widget.LinearLayout[1]/android.widget.FrameLayout[1]/android.widget.FrameLayout[1]/android.widget.FrameLayout[1]/android.widget.FrameLayout[1]/android.widget.FrameLayout[1]/android.view.ViewGroup[1]/android.widget.LinearLayout[2]/android.widget.Button[4]",
                                 timeout=10,
