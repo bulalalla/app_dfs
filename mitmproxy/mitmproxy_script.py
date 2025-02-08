@@ -26,11 +26,11 @@ class Events:
                                            password='123456',
                                            host='localhost',
                                            port=3306,
-                                           database='app_doe')
+                                           database='app_dfs')
         self.packet_name = self.get_current_app()
 
     def get_current_app(self):
-        with open('E:\\work\\app_auto_test\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
+        with open('E:\\work\\app_dfs\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
             return str(file.read())
         # self.packet_name = "foreignpolicy"
 
