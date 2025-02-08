@@ -8,3 +8,4 @@ test.py
 *.zip
 results/
 auto_control/auto.ps1
+mitmproxy/currapp.txt
