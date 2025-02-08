@@ -1,6 +1,7 @@
 import subprocess
 import os
 import shutil
+import time
 
 def adb_connect_device(device):
     try:
@@ -22,6 +23,7 @@ def adb_connect_device(device):
 
 
 def adb_install_apk(apk_path):
+    start_time = time.time()
     try:
         # 构建 adb install 命令
         command = ['adb', 'install', apk_path]
@@ -30,6 +32,7 @@ def adb_install_apk(apk_path):
         # 获取命令执行的标准输出
         output = result.stdout.lower()
         # 检查输出中是否包含安装成功的标志信息
+        print('installation spent time:', time.time() - start_time)
         if 'success' in output:
             return True
         else:
@@ -51,7 +54,6 @@ def start_tcpdump(filename):
         ]
         # 启动 tcpdump 进程，不阻塞主程序
         tcpdump_process = subprocess.Popen(command)
-        print("tcpdump 命令已启动。")
         return tcpdump_process
     except Exception as e:
         print(f"启动 tcpdump 时出错: {e}")
@@ -78,8 +80,8 @@ def start_mitmproxy(script):
         # 构建 mitmproxy 命令
         command = [
             'mitmdump', 
-            '-s', script, 
-            '-p', 18080,
+            f'-s {script}', 
+            '-p 18080',
             '--upstream=127.0.0.1:7890', 
         ]
         # 启动 mitmproxy 进程，不阻塞主程序
@@ -113,7 +115,8 @@ def move_results(src, dst):
         # 执行命令
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         # 检查命令输出，若没有错误信息则认为执行成功
-        if not result.stderr:
+        if '1 file pulled' in result.stderr.lower():
+            print(f'traffic saved in: {src} -> {dst}')
             return True
         else:
             print(f"执行 adb pull 时出错: {result.stderr}")
@@ -145,3 +148,8 @@ def copy_sslkeylog(dst):
     except Exception as e:
         print(f"复制或清空 SSLKEYLOG 文件时出错: {e}")
         return False
+    
+
+if __name__ == '__main__':
+
+    adb_install_apk('./results/Social/io.callfluent.app.apk')
