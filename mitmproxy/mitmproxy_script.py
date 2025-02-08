@@ -8,33 +8,6 @@ import mitmproxy.tls
 import mysql.connector
 import mitmproxy
 
-{
-    'duckduckgo', 'ok'
-    'scribd', 'ok'
-    'theatlantic', 'ok' 
-    'scmp', 'ok'
-    'messenger', 'no'
-    'goodreads', 'ok'
-    'researchgate', 'ok'
-    'quora', 'ok'
-    'ok.ru', 'no'
-    'economist', 'ok'
-    'instagram', 'ok'
-    'pixnet', 'no'
-    'theguardian', 'ok'
-    'businessinsider', 'ok' 
-    'foreignpolicy', 
-    'daum', 'ok'
-    'blogger', 'ok'
-    'archive', 'ok' 
-    'indiatimes', 'ok' 
-    'line', 'ok'
-    'onedrive', 'ok'
-    'hk01', 'ok'
-    'bbc', 'ok'
-    'wsj', 'ok'
-    'hootsuite', 'ok'
-}
 
 class Events:
 
@@ -57,9 +30,9 @@ class Events:
         self.packet_name = self.get_current_app()
 
     def get_current_app(self):
-        # with open('E:\\work\\app_auto_test\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
-            # return str(file.read())
-        self.packet_name = "foreignpolicy"
+        with open('E:\\work\\app_auto_test\\mitmproxy\\currapp.txt', 'r', encoding='utf-8') as file:
+            return str(file.read())
+        # self.packet_name = "foreignpolicy"
 
     def dns_request(self, flow: mitmproxy.dns.DNSFlow):
         print("DNS流量")
