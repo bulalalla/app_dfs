@@ -1,243 +1,147 @@
 import subprocess
-import signal
-import time
-import re
+import os
+import shutil
 
-
-class Task:
-    """
-        需要使用cmd执行的命令行被定义为Task
-    """
-    # created_task = set()
-
-    def __init__(self, task_id: str, task_cmd: list[str], slow: bool) -> None:
-        
-        # if task_id in self.created_task:
-        #     raise f"{task_id}已经被创建"
-        
-        self.id = task_id
-        self.cmd = task_cmd
-        self.slow = slow
-        self.status: str = ["CREATE", "RUNNING", "RUN_OVER", "RECV", "ERROR"]
-        self.status = "CREATE"
-        self.process: subprocess.Popen = None
-        self.exe_result_str: str = None
-        self.exe_result: dict = {}
-        self.res_dealwith_tbl = {
-            "": self.dealwtih_result_str
-        }
-
-    def __eq__(self, value: object) -> bool:
-        return isinstance(value, Task) and self.id == value.id
-
-    def __hash__(self) -> int:
-        return self.id.__hash__()
-
-    def run(self):
-        """
-            运行这个task
-        """
-        if self.status == "CREATE":
-            try:
-                process = subprocess.Popen(
-                        self.cmd,
-                        stdout=subprocess.PIPE,
-                        stdin=subprocess.PIPE,
-                        shell=True
-                    )
-                self.status = "RUNNING"
-                self.process = process
-                print(f"start task: {self.id}")
-                time.sleep(1)   # 起码给出1秒的时间执行
-            except:
-                self.status = "ERROR"
-
-    def stop(self):
-        """
-            停止这个task，状态应该设置为 RUN_OVER
-        """
-        if self.status == "RUNNING":
-            if self.process:
-                self.process.terminate()
-                self.process.wait()
-                self.status = "RUN_OVER"
-                print(f"end   task: {self.id}")
-        elif self.status == "CREATE":
-            print(f"you should run {self.id} first")
-
-    def recv(self):
-        """
-            接收并处理task的标准输出
-        """
-        if self.status == "RUNNING":
-            self.stop()
-        elif self.status == "CREATE":
-            print(f"you should run {self.id} first.")
-        
-        if self.status == "RUN_OVER":        
-            self.exe_result_str = self.process.communicate()[0].decode()
-            # TODO 对运行结果的标准输出做处理
-            self.status = "RECV"
-            return self.exe_result_str
-        
-
-    def is_running(self):
-        if self.status == "RUNNING" and not self.process.poll():
+def adb_connect_device(device):
+    try:
+        # 构建要执行的 ADB 命令
+        command = ['adb', 'connect', device]
+        # 执行命令并等待其完成
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        # 检查命令输出中是否包含连接成功的信息
+        output = result.stdout.lower()
+        if 'connected to' in output:
             return True
         else:
-            if self.status == "RUNNING":
-                self.status = "RUN_OVER"
+            print("Error: Failed to connect to device")
+            exit(-1)
+    except subprocess.CalledProcessError as e:
+        # 若命令执行出错，打印错误信息并返回 False
+        print(f"Error: {e.stderr}")
+        exit(-1)
+
+
+def adb_install_apk(apk_path):
+    try:
+        # 构建 adb install 命令
+        command = ['adb', 'install', apk_path]
+        # 执行命令，捕获标准输出和标准错误，使用文本模式，并检查返回码
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        # 获取命令执行的标准输出
+        output = result.stdout.lower()
+        # 检查输出中是否包含安装成功的标志信息
+        if 'success' in output:
+            return True
+        else:
+            return False
+    except subprocess.CalledProcessError as e:
+        # 若命令执行过程中出现错误，打印错误信息
+        print(f"Error: {e.stderr}")
         return False
 
-    # 这里可以根据不同的任务处理
-    def dealwtih_result_str(self):
-        pass
 
-    def dealwith_adb(self):
-        res_str = self.exe_result_str.lower()
-        if "unsuccess" in res_str or "cannot" in res_str or "failed" in res_str:
-            self.status = "ERROR"
-            return -1
-        return 0
-    
-    def dealwith_aapt(self):
-        aapt_output = self.process.communicate()[0].decode()
-        # 筛选出 package 和 activity 信息
-        package_pattern = re.search(r"package: name='([^']+)'", aapt_output)
-        activity_pattern = re.search(r"launchable-activity: name='([^']+)'", aapt_output)
+def start_tcpdump(filename):
+    try:
+        # 构建 tcpdump 命令
+        command = [
+            'adb', 'shell', 'tcpdump',
+            f"-w /data/local/tmp/{filename}.pcap",
+            '-i any',
+            'not port 5555 and not port 7555 and not port 5553 and not port 5554 and not port 5353'
+        ]
+        # 启动 tcpdump 进程，不阻塞主程序
+        tcpdump_process = subprocess.Popen(command)
+        print("tcpdump 命令已启动。")
+        return tcpdump_process
+    except Exception as e:
+        print(f"启动 tcpdump 时出错: {e}")
+        return None
 
-        # 如果没有获取到名称，就不继续执行
-        if package_pattern and activity_pattern:
-            self.exe_result.update({
-                "app_package_name": package_pattern.group(1),
-                "app_activity_name": activity_pattern.group(1)
-            })
-        else:
-            raise "init error, not find app_package_name or app_activity_name"
-        return 0
-
-    def dealwith_tcpdump(self):
-        return 0
-
-    def dealwith_mitmproxy(self):
-        return 0
-
-
-
-class TaskManager:
-    
-    def __init__(self, tasks: list[Task] | None) -> None:
-        if tasks == None:
-            self.tasks_list = list()
-        else:
-            self.tasks_list = tasks
-
-    def add_and_run(self, task: Task):
-        self.tasks_list.append(task)
-        self.tasks_list[-1].run()
-
-    def run_all(self, tasks=None):
-        if not tasks:
-            for task in self.tasks_list:
-                task.run()
-        else:
-            for task in tasks:
-                task.run()
-
-    def stop_all(self, tasks=None):
-        if not tasks:
-            for task in self.tasks_list:
-                task.stop()
-        else:
-            for task in tasks:
-                task.stop()
+def stop_tcpdump(tcpdump_process):
+    if tcpdump_process:
+        try:
+            # 尝试终止 tcpdump 进程
+            tcpdump_process.terminate()
+            # 等待进程结束
+            tcpdump_process.wait()
+            print("tcpdump 命令已停止。")
+        except Exception as e:
+            print(f"停止 tcpdump 时出错: {e}")
+        finally:
+            tcpdump_process = None
+    else:
+        print("tcpdump 进程未启动。")
 
 
-    def recv_all(self, tasks=None):
-        if not tasks:
-            for task in self.tasks_list:
-                task.recv()
-        else:
-            for task in tasks:
-                task.recv()
+def start_mitmproxy(script):
+    try:
+        # 构建 mitmproxy 命令
+        command = [
+            'mitmdump', 
+            '-s', script, 
+            '-p', 18080,
+            '--upstream=127.0.0.1:7890', 
+        ]
+        # 启动 mitmproxy 进程，不阻塞主程序
+        mitmproxy_process = subprocess.Popen(command)
+        print("mitmproxy 命令已启动。")
+        return mitmproxy_process
+    except Exception as e:
+        print(f"启动 mitmproxy 时出错: {e}")
+        return None
 
-
-    def find_task(self, task_id):
-        index = -1
-        for i in range(len(self.tasks_list)):
-            if self.tasks_list[i].id == task_id:
-                index = i
-        return None if index == -1 else self.tasks_list[index]
-    
-    def find_slow_task(self, slow=True):
-        res = []
-        for task in self.tasks_list:
-            if task.slow == slow:
-                res.append(task)
-        return res
-
-    def is_runover(self, tasks: list[str] | list[Task]):
-        """
-            检测这些任务是否都已经执行完毕
-        """
-        res = []
-        for task in tasks:
-            if isinstance(task, Task):
-                task_id = task.id
-            else:
-                task_id = task
-            task = self.find_task(task_id=task_id)
-            if not task.is_running():
-                res.append(True)
-            else:
-                res.append(False)
-        return res
-
-
-if __name__ == "__main__":
-    import pandas as pd
-    import mysql.connector
-
-    # 连接到数据库
-    conn = mysql.connector.connect(
-        host='127.0.0.1',
-        user='root',
-        password='1234',
-        database='app_doe'
-    )
-
-    # 查询获取不重复的 hosts
-    query = """
-    SELECT package_name, host
-    FROM app_domain_https WHERE add_time > '2024-09-29 11:00:00'
-    GROUP BY package_name, host;
-    """
-    cursor = conn.cursor()
-    cursor.execute(query)
-
-    # 获取所有结果
-    results = cursor.fetchall()
-
-    # 将结果转换为 DataFrame
-    df = pd.DataFrame(results, columns=['package_name', 'host'])
-
-    count = 0
-    for row in df['host']:
-        print(row)
-        host = str(row)
-        count += len(host.split(','))
-    print(count)
-        
-
-
-    # 将数据透视为每个 package_name 一列
-    df_pivot = df.pivot_table(index=df.groupby('package_name').cumcount(), columns='package_name', values='host', aggfunc='first')
-
-    # 将结果保存到 Excel
-    # df_pivot.to_excel('output.xlsx', index=False)
-
-    # 关闭连接
-    cursor.close()
-    conn.close()
+def stop_mitmproxy(mitmproxy_process):
+    if mitmproxy_process:
+        try:
+            # 尝试终止 mitmproxy 进程
+            mitmproxy_process.terminate()
+            # 等待进程结束
+            mitmproxy_process.wait()
+            print("mitmproxy 命令已停止。")
+        except Exception as e:
+            print(f"停止 mitmproxy 时出错: {e}")
+        finally:
+            mitmproxy_process = None
+    else:
+        print("mitmproxy 进程未启动。")
 
         
+def move_results(src, dst):
+    try:
+        # 构建 adb pull 命令
+        command = ['adb', 'pull', src, dst]
+        # 执行命令
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        # 检查命令输出，若没有错误信息则认为执行成功
+        if not result.stderr:
+            return True
+        else:
+            print(f"执行 adb pull 时出错: {result.stderr}")
+            return False
+    except subprocess.CalledProcessError as e:
+        print(f"执行 adb pull 时出错: {e.stderr}")
+        return False
+    
+
+def copy_sslkeylog(dst):
+    # 获取 SSLKEYLOG 环境变量指定的文件路径
+    sslkeylog_path = os.getenv('SSLKEYLOG')
+    if not sslkeylog_path:
+        print("未设置 SSLKEYLOG 环境变量。")
+        return False
+
+    try:
+        # 检查 SSLKEYLOG 文件是否存在
+        if os.path.exists(sslkeylog_path):
+            # 复制文件到目标路径
+            shutil.copy2(sslkeylog_path, dst)
+            # 清空 SSLKEYLOG 文件
+            with open(sslkeylog_path, 'w') as f:
+                f.write('')
+            return True
+        else:
+            print(f"SSLKEYLOG 指定的文件 {sslkeylog_path} 不存在。")
+            return False
+    except Exception as e:
+        print(f"复制或清空 SSLKEYLOG 文件时出错: {e}")
+        return False
