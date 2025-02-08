@@ -4,144 +4,177 @@ import argparse
 import re
 
 
-def init(tm: TaskManager):
-    parser = argparse.ArgumentParser(prog="APP AUTO CONTOL",
-                                     usage="",
+class TestApk:
+
+    def __init__(self, apk_path: str, pcapfile: str, sslkeylog: str):
+        self.apk_path = apk_path
+        self.pcapfile = pcapfile
+        self.sslkeylog = sslkeylog
+
+    def get_test_message(self):
+        """
+            根据apk获取测试前所需要的所有信息，包括apk的包名，启动activity名，以及app的uid等
+        """
+        try:
+            # 构建 aapt 命令
+            command = ["aapt", "dump", "badging", self.apk_path]
+            # 执行命令，捕获标准输出和标准错误，使用文本模式，并等待命令执行完成
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            aapt_output = result.stdout
+
+            # 使用正则表达式提取 package 信息
+            package_pattern = re.search(r"package: name='([^']+)'", aapt_output)
+            package_name = package_pattern.group(1) if package_pattern else None
+
+            # 使用正则表达式提取 launchable-activity 信息
+            activity_pattern = re.search(r"launchable-activity: name='([^']+)'", aapt_output)
+            activity_name = activity_pattern.group(1) if activity_pattern else None
+
+            self.package_name = package_name
+            self.activity_name = activity_name
+
+        except FileNotFoundError:
+            print("错误：未找到 'aapt' 可执行文件，请确保 aapt 已正确安装并配置到系统环境变量中。")
+        except subprocess.CalledProcessError as e:
+            print(f"执行命令时出错：{e.stderr}")
+        except IndexError:
+            print("提取信息时出错，可能输出格式不符合预期。")
+
+        try:
+            # 构建 adb 命令
+            command = f"adb shell dumpsys package {self.package_name} | grep userid -i"
+            # 执行命令并捕获输出
+            result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+            output = result.stdout
+
+            # 使用正则表达式提取 UID
+            pattern = r"userId=(\d+)"
+            match = re.search(pattern, output)
+            if match:
+                self.uid = match.group(1)
+            else:
+                print("未找到 UID 信息。")
+                self.uid = None
+        except subprocess.CalledProcessError as e:
+            print(f"执行命令时出错: {e.stderr}")
+            self.uid = None
+
+        # 处理 pcapfile、sslkeylog 文件名
+        self.pcapfile.replace("<pcakage_name>", self.package_name)
+        self.sslkeylog.replace("<pcakage_name>", self.package_name)
+
+
+def init_param():
+    parser = argparse.ArgumentParser(prog="APPs AUTO CONTOL",
                                      description="本工具为APP自动测试工具，它会连接本地的MuMu模拟器默认127.0.0.1:7555端口，安装指定的APP，并自动产生尽可能多和不同的点击行为",
                                      add_help=True)
-    parser.add_argument("--apk", help="apk, 待测试APP安装包的位置", default="D:/apks/Washington Post_6.72.1_apkcombo.com.apk")
-    parser.add_argument("--device", help="device, 模拟器adb服务的运行端口，<ip_addr>:<port>", default="127.0.0.1:7555")
-    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成", default=10)
-    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default=5)
-    parser.add_argument("--script", help="中间人的脚本路径", default="D:\\work\\app_auto_test\\mitmproxy\\mitmproxy_script.py")
-    parser.add_argument("--pcapfile", help="测试过程中，APP产生的流量的路径", default="default.pcap")
+    parser.add_argument("-a", "--apk", help="apk, 待测试APP安装包的位置", required=False, type=str)
+    parser.add_argument("--apkdir", help="当进行多个APP测试时，指定apk存放的文件夹", required=False, type=str)
+    parser.add_argument("-p", "--pcapfile", help="apk产生的流量存储路径，默认值<package_name>.pcap", required=False, type=str)
+    parser.add_argument("-k", "--sslkeylog", help="sslkeylog文件路径，默认值<package_name>.keylog", required=False, type=str)
+    parser.add_argument("--pcapdir", help="进行多个APP测量时，产生的pcap文件的存储路径，默认值./results/pcap/", required=False, type=str)
+    parser.add_argument("--keydir", help="进行多个APP测量时，产生的sslkeylog文件的存储路径，默认值./results/sslkeylog/", required=False, type=str)
+    parser.add_argument("-t", "--timeout", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成，默认值 300 秒", default=5 * 60, required=False, type=int)
+    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成，默认值 1", default=1, required=False, type=int)
+    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default=5, required=False, type=int)
+    parser.add_argument("-d", "--device", help="device, 模拟器adb服务的运行端口，<ip_addr>:<port>，默认值127.0.0.1:7555", required=False, type=str)
+    parser.add_argument("-s", "--script", help="中间人的处理脚本路径，默认值值E:\\work\\app_dfs\\mitmproxy\\mitmproxy_script.py", required=False, type=str)
 
-    res = dict()
-    param = parser.parse_args()
+    args = parser.parse_args()
 
-    app_abs_path = param.apk
-    device = param.device
-    for_round = int(param.round)
-    dfs_depth = int(param.depth)
-    mitm_script_abs = param.script
-    pcap_filename = param.pcapfile
+    # 检查传参
+    if args.apk is None and args.apkdir is None:
+        print("ParamError: at least apk or apkdir is required!")
+        parser.print_help()
+        exit(-1)
+    elif args.apk is not None and args.apkdir is not None:
+        print("ParamError: apk and apkdir cannot be used at the same time!")
+        parser.print_help()
+        exit(-1)
+    elif args.apk is not None:
+        if not os.path.exists(args.apk):
+            print(f"ParamError: {args.apk} is not exist!")
+            exit(-1)
+    elif args.apkdir is not None:
+        if not os.path.exists(args.apkdir):
+            print(f"ParamError: {args.apkdir} is not exist!")
+            exit(-1)
 
-    # 连接Emulator并获取root
-    tm.add_and_run(Task(task_id="adb_connect", task_cmd=["adb", "connect", device], slow=False))
-    tm.add_and_run(Task(task_id="adb_root", task_cmd=["adb", "root"], slow=False))
-    tm.recv_all()
-    # 检验是否会连接失败，失败则不再继续
-    task_connect = tm.find_task(task_id="adb_connect")
-    task_root = tm.find_task(task_id="adb_root")
-    if task_connect.dealwith_adb() == -1 or task_root.dealwith_adb() == -1:
-        error_str = f"adb error: {task_connect.exe_result_str}; {task_root.exe_result_str}"
-        raise error_str
-
-    # 获取package名和activity名
-    # 使用aapt获取: 执行 aapt 命令并使用 Select-String 模拟筛选行
-    tm.add_and_run(Task(task_id="aapt_dump", task_cmd=["aapt", "dump", "badging", app_abs_path], slow=False))
-    task_aapt = tm.find_task(task_id="aapt_dump")
-    task_aapt.recv()
-    if task_aapt.dealwith_aapt() == -1:
-        raise "aapt获取package name和activity name失败"
-
-    # 安装app
-    tm.add_and_run(Task(task_id="adb_install", task_cmd=["adb", "install", app_abs_path], slow=False))
-    task_install = tm.find_task(task_id="adb_install")
-    task_install.recv()
-    if task_install.dealwith_adb() == -1:
-        error_str = f"adb error: {task_install.exe_result_str}"
-        raise error_str
-    else:
-        # 将currapp名字写入 .\mitmproxy\currapp.txt文件中，因为中间人脚本需要用到
-        with open(".\\mitmproxy\\currapp.txt", 'w', encoding='utf-8') as file:
-            file.write(task_aapt.exe_result.get("app_package_name"))
-
-    res.update({
-        "app_abs_path": app_abs_path,
-        "device": device,
-        "for_round": for_round,
-        "dfs_depth": dfs_depth,
-        "mitm_script_abs": mitm_script_abs,
-        "pcap_filename": pcap_filename if pcap_filename != "default.pcap" else task_aapt.exe_result.get("app_package_name") + ".pcap",
-        "app_package_name": task_aapt.exe_result.get("app_package_name"),
-        "app_activity_name": task_aapt.exe_result.get("app_activity_name"),
-        "uid": 10100    # app的uid，这显然是一个假的数字
-    })
-
-    return res
-
-
-def run_background_task(tm: TaskManager):
-    """
-        运行后台进程
-        return returncode, 0成功 -1代表第一个任务失败，-2代表第二个失败，依次类推
-    """
-    tasks = [
-        Task(task_id="tcpdump_capture_traffic",
-             task_cmd=['adb', 'shell', 'tcpdump', f"-w /data/local/tmp/{parameters['pcap_filename']}", '-i any not port 5555 and not port 7555 and not port 5553 and not port 5554 and not port 5353'],
-             slow=True),
-        # 如果不想使用中间人代理，可以把下面的Task注释掉
-        Task(task_id="mitm_proxy", task_cmd=['mitmdump', '-s', parameters['mitm_script_abs'], '--upstream=127.0.0.1:7890', '-p 18080'], slow=True)
-    ]
+    if args.pcapdir is not None and not os.exists(args.pcapdir):
+        print(f"ParamError: {args.pcapdir} is not exist!")
+        exit(-1)
     
-    tm.tasks_list.extend(tasks)
-    tm.run_all()
-    # 找到需要在后台一直运行的task 只有它们一直处于running状态，才能继续向下执行 
-    slow_tasks = tm.find_slow_task(slow=True)
-    flag = -1
-    for slow_task in slow_tasks:
-        # 判断子进程是否终止
-        if slow_task.process.poll():
-            print(f"Warning: Task with id: {slow_task.id} is not running, may you need run it. Please check is the tool installed and cmd is correct.")
-            return flag
-        flag -= 1
-    return 0 if flag == -(len(tasks) + 1) else flag
+    if args.keydir is not None and not os.exists(args.keydir):
+        print(f"ParamError: {args.keydir} is not exist!")
+        exit(-1)
+    
+    return {
+        "apk_path": args.apk,
+        "apkdir": args.apkdir,
+        "pcapfile": args.pcapfile if args.pcapfile else "<package_name>.pcap",
+        "sslkeylog": args.sslkeylog if args.sslkeylog else "<package_name>.keylog",
+        "pcapdir": args.pcapdir if args.pcapdir else "./results/pcap/",
+        "keydir": args.keydir if args.keydir else "./results/sslkeylog/",
+        "timeout": args.timeout,
+        "test_round": args.round,
+        "dfs_depth": args.depth,
+        "device": '127.0.0.1:7555' if not args.device else args.device,
+        "mitm_script": "E:\\work\\app_dfs\\mitmproxy\\mitmproxy_script.py" if not args.script else args.script,
+    }
+
+
+def run_auto_test():
+    # 创建APP自动控制器 & adb连接模拟器 & adb以root方式运行
+    controler = Controler(Operator=MumuOperator)
+    controler.max_timeout = param["timeout"]
+    controler.max_loop = param["test_round"]
+    controler.max_depth = param["dfs_depth"]
+    controler.app_package_name = None
+    controler.app_activity_name = None
+
+    # 依次对APP测量
+    for test_apk in test_apk_list:
+        # 1. 安装 apk
+        adb_install_apk(test_apk.apk_path)
+        # 2. 获取 apk 的测试所需的信息
+        test_apk.get_test_message()
+        # 3. 运行中间人代理 & 开启抓包程序
+        tcpdump_process = start_tcpdump(test_apk.package_name if not param["pcapfile"] else param["pcapfile"])
+        mitm_process = start_mitmproxy(param["mitm_script"])
+        # 4. 运行app自动测试脚本
+        controler.app_package_name = test_apk.package_name
+        controler.app_activity_name = test_apk.activity_name
+        controler.run()
+
+        # 5. 关闭中间人代理 & 抓包程序
+        stop_tcpdump(tcpdump_process)
+        stop_mitmproxy(mitm_process)
+        # 6. 移动测试结果到指定目录
+        move_results(src=f'/data/local/tmp/{test_apk.package_name if not param["pcapfile"] else param["pcapfile"]}', dst=test_apk.pcapfile)
+        copy_sslkeylog(dst=test_apk.sslkeylog)
+
+        # 7. 卸载APP，恢复手机默认状态
+        controler.operator.app_uninstall(test_apk.package_name)
 
 
 if __name__ == '__main__':
-    task_manager = TaskManager(None)
-    # 1. 接收参数
-    # 2. 连接模拟器
-    # 3. 获取app的包名和启动activity名，安装app到模拟器
-    # 若init失败，则不应该继续执行，!需要抛出异常!
-    try:
-        parameters = init(tm=task_manager)
-        for k,v in parameters.items():
-            print(f"{k}: {v}")
-    except Exception as e:
-        print(f"init error! {e}")
+    # 变量声明
+    test_apk_list: list[TestApk] = []
+
+    # 参数获取
+    param = init_param()
+    if param["apk_path"] is not None:
+        test_apk_list.append(TestApk(param["apk_path"], param["pcapfile"], param["sslkeylog"]))
+    elif param["apkdir"] is not None:
+        test_apk_list.extend([TestApk(os.path.join(param["apkdir"], apk), 
+                                      param["pcapdir"] + "\<package_name>.pcap", 
+                                      param["keydir"] + "\<package_name>.keylog") 
+                              for apk in os.listdir(param["apkdir"]) if apk.endswith(".apk") or apk.endswith(".xapk")])
+    else:
+        print("不可能的")
         exit(-1)
     
-    try:
-        # 打开自动测试APP时的后台任务：抓包、中间人代理等
-        # 若此步骤失败，则不影响APP自动测试，可以根据需要继续向下执行；!不应该抛出异常!
-        returncode = run_background_task(tm=task_manager)
-        if returncode == 0 or returncode != 0:
-            # 当前设置为，无论如何，都可以继续执行
-            pass
-        
-        # 创建控制器
-        controler = Controler(Operator=MumuOperator,
-                            app_activity_name=parameters['app_activity_name'],
-                            app_package_name=parameters['app_package_name'],
-                            max_depth=parameters["dfs_depth"],
-                            max_loop=parameters["for_round"])
-                            
-        # 开始执行app_dfs
-        controler.run()
-        # pass
-        # 停止抓包
-        task_pcap = task_manager.find_task(task_id="tcpdump_capture_traffic")
-        task_pcap.stop()
-        # 创建收尾的后台任务并执行
-        task_manager.add_and_run(Task(task_id="pull_pcap", task_cmd=["adb", "pull", f"/data/local/tmp/{parameters['pcap_filename']}", "./results/traffic/"], slow=False))
-        task_manager.add_and_run(Task(task_id="uninstall", task_cmd=["adb", "uninstall", parameters["app_package_name"]], slow=False))
-    except:
-        pass
-    finally:
-        print("clear tasks...")
-        # 正常结束抓包进程
-        task_manager.stop_all()
-        print("clear over")
-
+    for test_apk in test_apk_list:
+        print(test_apk.apk_path, test_apk.pcapfile, test_apk.sslkeylog)
+    print(param.__str__())
+    # run_auto_test()
