@@ -56,7 +56,7 @@ class MumuOperator(BaseOperator):
 
     def __init__(self, address="127.0.0.1", port=7555, serial=None) -> None:
         try:
-            os.popen(f"adb connect {address}:{port}")
+            os.popen(f"adb connect {address}:{port}& adb root")
             sleep(1)
             self.device = u2.connect()
         except Exception as e:
