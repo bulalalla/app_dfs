@@ -19,8 +19,8 @@ class Controler:
                  port=7555,
                  app_package_name="",
                  app_activity_name="",
-                 max_depth=10,
-                 max_loop=10,
+                 max_depth=5,
+                 max_loop=1,
                  ) -> None:
         # id都为自增的，即当检测到新的界面/元素，则id自增并分配给新的界面/元素
         # dict记录此id的信息，用于检测 界面/元素 是否为新的
@@ -51,7 +51,7 @@ class Controler:
         # dfs超参数
         self.max_depth = max_depth
         self.max_loop = max_loop
-        self.max_timeout = 10 * 60  # 10分钟
+        self.max_timeout = 5 * 60  # 10分钟
 
         # 初始化Operator
         self.operator = Operator(address=self.address, port=self.port)
@@ -91,7 +91,7 @@ class Controler:
             return
         if self.operator.curr_app()["package"] != self.app_package_name:
             return
-        time.sleep(2)
+        time.sleep(1)
         screen = UIBlock(xml_str=self.operator.dump_hierarchy(), activity=self.operator.curr_app()["activity"])
 
         # 执行界面不会跳转的操作
@@ -116,6 +116,9 @@ class Controler:
                 continue
 
     def run(self):
+        if not self.app_package_name or not self.app_activity_name:
+            print("app包名和启动activity不正确")
+            return
         # 此时 抓包、中间人代理、app包名、启动activity都已确定。
         # 开始执行自动控制
         print("开始测试...")
@@ -134,5 +137,5 @@ class Controler:
     
 
 if __name__ == '__main__':
-    c = Controler(Operator=MumuOperator, app_package_name="com.washingtonpost.android", app_activity_name="com.wapo.flagship.MainActivity")
+    c = Controler(Operator=MumuOperator, app_package_name="air.com.christianfilipina.mobile", app_activity_name=".MainActivity")
     c.run()
