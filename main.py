@@ -17,7 +17,7 @@ class TestApk:
         """
         try:
             # 构建 aapt 命令
-            command = ["aapt", "dump", "badging", self.apk_path]
+            command = ["aapt2", "dump", "badging", self.apk_path]
             # 执行命令，捕获标准输出和标准错误，使用文本模式，并等待命令执行完成
             result = subprocess.run(command, capture_output=True, text=True, check=True)
             aapt_output = result.stdout
@@ -32,6 +32,9 @@ class TestApk:
 
             self.package_name = package_name
             self.activity_name = activity_name
+            # 处理 pcapfile、sslkeylog 文件名
+            self.pcapfile = self.pcapfile.replace("<package_name>", self.package_name)
+            self.sslkeylog = self.sslkeylog.replace("<package_name>", self.package_name)
 
         except FileNotFoundError:
             print("错误：未找到 'aapt' 可执行文件，请确保 aapt 已正确安装并配置到系统环境变量中。")
@@ -42,7 +45,7 @@ class TestApk:
 
         try:
             # 构建 adb 命令
-            command = f"adb shell dumpsys package {self.package_name} | grep userid -i"
+            command = f'adb shell "dumpsys package {self.package_name} | grep userid -i"'
             # 执行命令并捕获输出
             result = subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
             output = result.stdout
@@ -56,12 +59,8 @@ class TestApk:
                 print("未找到 UID 信息。")
                 self.uid = None
         except subprocess.CalledProcessError as e:
-            print(f"执行命令时出错: {e.stderr}")
+            print(f"uid执行命令时出错: {e.stderr}")
             self.uid = None
-
-        # 处理 pcapfile、sslkeylog 文件名
-        self.pcapfile.replace("<pcakage_name>", self.package_name)
-        self.sslkeylog.replace("<pcakage_name>", self.package_name)
 
 
 def init_param():
@@ -124,22 +123,29 @@ def init_param():
 
 
 def run_auto_test():
-    # 创建APP自动控制器 & adb连接模拟器 & adb以root方式运行
+    # adb连接模拟器 & adb以root方式运行
+
+    # 创建APP自动控制器
     controler = Controler(Operator=MumuOperator)
     controler.max_timeout = param["timeout"]
     controler.max_loop = param["test_round"]
     controler.max_depth = param["dfs_depth"]
     controler.app_package_name = None
     controler.app_activity_name = None
-
+    sleep(1)
     # 依次对APP测量
     for test_apk in test_apk_list:
         # 1. 安装 apk
-        adb_install_apk(test_apk.apk_path)
+        if not adb_install_apk(test_apk.apk_path):
+            print(f"{test_apk.apk_path} install failed!")
+            continue
         # 2. 获取 apk 的测试所需的信息
         test_apk.get_test_message()
+        # 将包名传递给中间人代理
+        with open('E:\\work\\app_dfs\\mitmproxy\\currapp.txt', 'w') as file:
+            file.write(test_apk.package_name)
         # 3. 运行中间人代理 & 开启抓包程序
-        tcpdump_process = start_tcpdump(test_apk.package_name if not param["pcapfile"] else param["pcapfile"])
+        tcpdump_process = start_tcpdump(test_apk.package_name)
         mitm_process = start_mitmproxy(param["mitm_script"])
         # 4. 运行app自动测试脚本
         controler.app_package_name = test_apk.package_name
@@ -150,7 +156,7 @@ def run_auto_test():
         stop_tcpdump(tcpdump_process)
         stop_mitmproxy(mitm_process)
         # 6. 移动测试结果到指定目录
-        move_results(src=f'/data/local/tmp/{test_apk.package_name if not param["pcapfile"] else param["pcapfile"]}', dst=test_apk.pcapfile)
+        move_results(src=f'/data/local/tmp/{test_apk.package_name}.pcap', dst=test_apk.pcapfile)
         copy_sslkeylog(dst=test_apk.sslkeylog)
 
         # 7. 卸载APP，恢复手机默认状态
@@ -166,15 +172,12 @@ if __name__ == '__main__':
     if param["apk_path"] is not None:
         test_apk_list.append(TestApk(param["apk_path"], param["pcapfile"], param["sslkeylog"]))
     elif param["apkdir"] is not None:
-        test_apk_list.extend([TestApk(os.path.join(param["apkdir"], apk), 
-                                      param["pcapdir"] + "\<package_name>.pcap", 
-                                      param["keydir"] + "\<package_name>.keylog") 
+        test_apk_list.extend([TestApk(os.path.join(param["apkdir"], apk),
+                                      os.path.join(param["pcapdir"],"<package_name>.pcap"),
+                                      os.path.join(param["keydir"],"<package_name>.keylog"))
                               for apk in os.listdir(param["apkdir"]) if apk.endswith(".apk") or apk.endswith(".xapk")])
     else:
         print("不可能的")
         exit(-1)
     
-    for test_apk in test_apk_list:
-        print(test_apk.apk_path, test_apk.pcapfile, test_apk.sslkeylog)
-    print(param.__str__())
-    # run_auto_test()
+    run_auto_test()
