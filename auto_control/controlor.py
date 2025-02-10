@@ -91,7 +91,6 @@ class Controler:
             return
         if self.operator.curr_app()["package"] != self.app_package_name:
             return
-        time.sleep(1)
         screen = UIBlock(xml_str=self.operator.dump_hierarchy(), activity=self.operator.curr_app()["activity"])
 
         # 执行界面不会跳转的操作
@@ -101,16 +100,25 @@ class Controler:
         # 执行界面可能会跳转的操作
         clickable_ele = [(ele, self.record[screen.activity][ele.id] if ele.id in self.record[screen.activity] else 0 ) for ele in screen.clickable_elements]
         clickable_ele.sort(key=lambda x: x[1])  # 根据第二个元素升序排序
-        for element, _ in clickable_ele:
+        for idx, (element, _) in enumerate(clickable_ele):
             # 是否点击成功
-            if self.click_view(screen.activity, element):
-                curr_activity = self.operator.curr_app()['activity']
-                if curr_activity != screen.activity:
-                    if curr_activity not in self.record.keys():
-                        self.record[curr_activity] = {}
+            if self.click_view(screen.activity, element):                
+                new_screen = UIBlock(xml_str=self.operator.dump_hierarchy(), activity=self.operator.curr_app()['activity'])
+                if new_screen.activity != screen.activity:
+                    if new_screen.activity not in self.record.keys():
+                        self.record[new_screen.activity] = {}
                     self.app_dfs(curr_depth + 1, time.time())
+                elif idx + 1 < len(clickable_ele):
+                    # 新页面与旧页面相同元素比率
+                    overlap = screen.clickable_overlap(new_screen)
+                    if overlap < 0.05:
+                        self.app_dfs(curr_depth + 1, time.time())
+                    elif overlap >= 0.05 and overlap < 0.9:
+                        self.app_dfs(curr_depth, time.time())
+                    else:
+                        continue
                 else:
-                    self.app_dfs(curr_depth, time.time())
+                    pass
             # 点击失败
             else:
                 continue
@@ -124,18 +132,28 @@ class Controler:
         print("开始测试...")
         self.record = dict()    # 清空
         self.begin_time = time.time()
+        self.record[self.app_activity_name] = {}
 
         for _ in range(self.max_loop):
             self.operator.clear_background()
             self.operator.start_app(self.app_package_name, self.app_activity_name)
             # 打开应用程序可能需要一点时间
             sleep(3)
-            # 获取第一个界面，开始遍历
-            self.record[self.app_activity_name] = {}
             self.app_dfs(0, time.time())
         print("测试结束.")
     
 
+from pprint import pprint
+
 if __name__ == '__main__':
-    c = Controler(Operator=MumuOperator, app_package_name="air.com.christianfilipina.mobile", app_activity_name=".MainActivity")
+    c = Controler(Operator=MumuOperator, 
+                  app_package_name="com.washingtonpost.android", 
+                  app_activity_name="com.wapo.flagship.MainActivity",
+                  address='192.168.31.222',
+                  port=5555)
+    c.max_depth = 10
+    c.max_loop = 5
+    c.max_timeout = 300
     c.run()
+
+    pprint(c.record)
