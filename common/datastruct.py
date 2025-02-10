@@ -52,7 +52,15 @@ class UIBlock():
         """
             UIBlock的id 这里的计算方法只能是近似方法
         """
-        return ' '.join(map(str, [self.activity, self.tag, self.text, self.tail, *self.center, self.attrib.get('content-desc')]))
+        sub_elements = self.findall('.//*[@text]')
+        text = ''
+        count = 0
+        if sub_elements:
+            for ele in sub_elements:
+                if ele.attrib.get('text'):
+                    text += ele.attrib.get('text')
+                    count += 1
+        return ' '.join(map(str, [self.activity, self.tag, self.text, self.tail, self.attrib.get('content-desc'), text]))
     
     @functools.cached_property
     def bounds(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
@@ -99,6 +107,11 @@ class UIBlock():
     @functools.cached_property
     def editable_elements(self):
         res = self.xpath('.//*[contains(name(), "EditText")]')
+        return res
+    
+    @functools.cached_property
+    def text_elements(self):
+        res = self.xpath('.//*[contains(name(), "TextView")]')
         return res
     
     @functools.cached_property
@@ -184,6 +197,17 @@ class UIBlock():
             判断当前界面是否包含某个元素
         """
         return element in self.all_sub_elements
+    
+    def clickable_overlap(self, other) -> float:
+        """
+            计算两个UIblock的clickable属性重叠程度
+        """
+        # 计算两个UIblock的clickable属性重叠程度
+        overlap = 0
+        for ele in self.clickable_elements:
+            if ele in other.clickable_elements:
+                overlap += 1
+        return overlap/ len(self.clickable_elements)
 
 
 def parse_xpath(xpath: str):
