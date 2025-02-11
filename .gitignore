@@ -3,10 +3,10 @@ __pycache__/
 *.xml
 相关文档/
 运行说明.assets/
-app_rank.xlsx
 test.py
 *.zip
-results/
+results/*
+test/*
 auto_control/auto.ps1
 mitmproxy/currapp.txt
-*.ps1
+README.assets/
