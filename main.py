@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from common.command import *
 from auto_control.controlor import *
 import argparse
@@ -19,7 +20,7 @@ class TestApk:
             # 构建 aapt 命令
             command = ["aapt2", "dump", "badging", self.apk_path]
             # 执行命令，捕获标准输出和标准错误，使用文本模式，并等待命令执行完成
-            result = subprocess.run(command, capture_output=True, text=True, check=True)
+            result = subprocess.run(command, capture_output=True, text=True, check=True, encoding='utf-8')
             aapt_output = result.stdout
             if not aapt_output:
                 print("未找到包名，请检查APK文件是否正确。")
@@ -145,9 +146,11 @@ def run_auto_test():
         # 2. 获取 apk 的测试所需的信息
         test_apk.get_test_message()
         if not test_apk.package_name or not test_apk.activity_name:
+            controler.operator.app_uninstall(test_apk.package_name)
             continue
         # 将包名传递给中间人代理
-        with open('E:\\work\\app_dfs\\mitmproxy\\currapp.txt', 'w') as file:
+        with open('E:\\work\\app_dfs\\mitmproxy\\currapp.txt', 'w', encoding='utf-8') as file:
+            print(test_apk.package_name)
             file.write(test_apk.package_name)
         # 3. 运行中间人代理 & 开启抓包程序
         tcpdump_process = start_tcpdump(test_apk.package_name)
