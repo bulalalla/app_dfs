@@ -92,12 +92,13 @@ class Controler:
         if self.operator.curr_app()["package"] != self.app_package_name:
             return
         screen = UIBlock(xml_str=self.operator.dump_hierarchy(), activity=self.operator.curr_app()["activity"])
-
         # 执行界面不会跳转的操作
         self.edit_text_view(screen.editable_elements, {})
         self.scroll_view(screen.scrollable_elements)
 
         # 执行界面可能会跳转的操作
+        if screen.activity not in self.record.keys():
+            self.record[screen.activity] = {}
         clickable_ele = [(ele, self.record[screen.activity][ele.id] if ele.id in self.record[screen.activity] else 0 ) for ele in screen.clickable_elements]
         clickable_ele.sort(key=lambda x: x[1])  # 根据第二个元素升序排序
         for idx, (element, _) in enumerate(clickable_ele):

@@ -21,7 +21,11 @@ class TestApk:
             # 执行命令，捕获标准输出和标准错误，使用文本模式，并等待命令执行完成
             result = subprocess.run(command, capture_output=True, text=True, check=True)
             aapt_output = result.stdout
-
+            if not aapt_output:
+                print("未找到包名，请检查APK文件是否正确。")
+                self.package_name = None
+                self.activity_name = None
+                return
             # 使用正则表达式提取 package 信息
             package_pattern = re.search(r"package: name='([^']+)'", aapt_output)
             package_name = package_pattern.group(1) if package_pattern else None
@@ -98,11 +102,11 @@ def init_param():
             print(f"ParamError: {args.apkdir} is not exist!")
             exit(-1)
 
-    if args.pcapdir is not None and not os.exists(args.pcapdir):
+    if args.pcapdir is not None and not os.path.exists(args.pcapdir):
         print(f"ParamError: {args.pcapdir} is not exist!")
         exit(-1)
     
-    if args.keydir is not None and not os.exists(args.keydir):
+    if args.keydir is not None and not os.path.exists(args.keydir):
         print(f"ParamError: {args.keydir} is not exist!")
         exit(-1)
     
@@ -140,6 +144,8 @@ def run_auto_test():
             continue
         # 2. 获取 apk 的测试所需的信息
         test_apk.get_test_message()
+        if not test_apk.package_name or not test_apk.activity_name:
+            continue
         # 将包名传递给中间人代理
         with open('E:\\work\\app_dfs\\mitmproxy\\currapp.txt', 'w') as file:
             file.write(test_apk.package_name)
@@ -149,17 +155,21 @@ def run_auto_test():
         # 4. 运行app自动测试脚本
         controler.app_package_name = test_apk.package_name
         controler.app_activity_name = test_apk.activity_name
-        controler.run()
+        try:
+            controler.run()
+        except Exception as e:
+            print(e)
+            return 
+        finally:
+            # 5. 关闭中间人代理 & 抓包程序
+            stop_tcpdump(tcpdump_process)
+            stop_mitmproxy(mitm_process)
+            # 6. 移动测试结果到指定目录
+            move_results(src=f'/data/local/tmp/{test_apk.package_name}.pcap', dst=test_apk.pcapfile)
+            copy_sslkeylog(dst=test_apk.sslkeylog)
 
-        # 5. 关闭中间人代理 & 抓包程序
-        stop_tcpdump(tcpdump_process)
-        stop_mitmproxy(mitm_process)
-        # 6. 移动测试结果到指定目录
-        move_results(src=f'/data/local/tmp/{test_apk.package_name}.pcap', dst=test_apk.pcapfile)
-        copy_sslkeylog(dst=test_apk.sslkeylog)
-
-        # 7. 卸载APP，恢复手机默认状态
-        controler.operator.app_uninstall(test_apk.package_name)
+            # 7. 卸载APP，恢复手机默认状态
+            controler.operator.app_uninstall(test_apk.package_name)
 
 
 if __name__ == '__main__':

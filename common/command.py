@@ -53,8 +53,9 @@ def start_tcpdump(filename):
             'not port 5555 and not port 7555 and not port 5553 and not port 5554 and not port 5353'
         ]
         # 启动 tcpdump 进程，不阻塞主程序
-        tcpdump_process = subprocess.Popen(command)
-        return tcpdump_process
+        with open(os.devnull, 'w') as null:
+            tcpdump_process = subprocess.Popen(command, stdout=null, stderr=null)
+            return tcpdump_process
     except Exception as e:
         print(f"启动 tcpdump 时出错: {e}")
         return None
@@ -85,9 +86,10 @@ def start_mitmproxy(script):
             '--upstream=127.0.0.1:7890', 
         ]
         # 启动 mitmproxy 进程，不阻塞主程序
-        mitmproxy_process = subprocess.Popen(command)
-        print("mitmproxy 命令已启动。")
-        return mitmproxy_process
+        with open(os.devnull, 'w') as null:
+            mitmproxy_process = subprocess.Popen(command, stdout=null, stderr=null)
+            print("mitmproxy 命令已启动。")
+            return mitmproxy_process
     except Exception as e:
         print(f"启动 mitmproxy 时出错: {e}")
         return None
@@ -128,9 +130,9 @@ def move_results(src, dst):
 
 def copy_sslkeylog(dst):
     # 获取 SSLKEYLOG 环境变量指定的文件路径
-    sslkeylog_path = os.getenv('SSLKEYLOG')
+    sslkeylog_path = os.getenv('SSLKEYLOGFILE')
     if not sslkeylog_path:
-        print("未设置 SSLKEYLOG 环境变量。")
+        print("未设置 SSLKEYLOGFILE 环境变量。")
         return False
 
     try:
@@ -143,10 +145,10 @@ def copy_sslkeylog(dst):
                 f.write('')
             return True
         else:
-            print(f"SSLKEYLOG 指定的文件 {sslkeylog_path} 不存在。")
+            print(f"SSLKEYLOGFILE 指定的文件 {sslkeylog_path} 不存在。")
             return False
     except Exception as e:
-        print(f"复制或清空 SSLKEYLOG 文件时出错: {e}")
+        print(f"复制或清空 SSLKEYLOGFILE 文件时出错: {e}")
         return False
     
 
