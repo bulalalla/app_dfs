@@ -31,7 +31,7 @@
 
      那么配置即为：
 
-     <img src="https://www.helloimg.com/i/2025/02/11/67aae5c9c3147.png" alt="image-20250211121532930" style="zoom:67%;" />
+     <img src="https://www.helloimg.com/i/2025/02/11/67aae5c9c3147.png" alt="image-20250211121532930" style="zoom:30%;" />
 
 3. 其它配置
 
