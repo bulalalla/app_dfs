@@ -6,6 +6,7 @@ import re
 from typing import Optional, Union
 import pandas as pd
 from tqdm import tqdm
+import argparse
 
 from common.base_operation import *
 from common.datastruct import *
@@ -182,7 +183,7 @@ class GoogleSpider:
         finally:
             # 存储已爬取到的信息
             df = pd.DataFrame(apps_info)
-            with pd.ExcelWriter('./app_rank.xlsx', engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            with pd.ExcelWriter(self.save_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
                 df.to_excel(writer, sheet_name=f'{device_type}-{app_category}', index=False)
     
     def run_rank_spider(self):
@@ -414,50 +415,38 @@ def download_apks():
 
 
 def rank_of():
-    device = "127.0.0.1:7555"
-    # 0. 确定爬取目标，类别、数量、地区
     target_list = [
-            # ("手机", "办公"),
-            # ("手机", "财务"),
-            # ("手机", "餐饮美食"),
-            # ("手机", "车辆和交通"),
-            ("手机", "地图和导航"),
-            ("手机", "个性定制"),
-            # ("手机", "购物"),
-            ("手机", "活动"),
-            # ("手机", "家具装修"),
-            ("手机", "健康与健身"),
-            ("手机", "教育"),
-            # ("手机", "漫画"),
-            ("手机", "美容时尚"),
-            # ("手机", "软件库与演示"),
-            # ("手机", "社交"),
-            # ("手机", "摄影"),
-            ("手机", "生活时尚"),
-            # ("手机", "视频播放和编辑"),
-            # ("手机", "体育"),
-            ("手机", "天气"),
-            # ("手机", "通讯"),
-            ("手机", "图书与工具书"),
-            ("手机", "外出旅行与本地生活"),
-            ("手机", "效率"),
-            # ("手机", "新闻杂志"),
-            ("手机", "医疗"),
-            ("手机", "艺术和设计"),
-            ("手机", "音乐与音频"),
-            # ("手机", "娱乐"),
-            # ("手机", "育儿"),
-        ]
-    # 连接设备
+        # ... (保持原有代码不变)
+    ]
     operator = MumuOperator(address=device.split(':')[0],
                             port=int(device.split(':')[1]))
-    # 初始化 spiber
     google_spiber = GoogleSpider(operator)
-    # 设定目标
-    # google_spiber.set_rank_target(target_list)
-    # 开始
-    # google_spiber.run_spider()    # 挨个爬取每个目标
-    # google_spiber.rank_of('手机', '办公1')   # 仅爬取传入的目标
+    google_spiber.set_rank_target(target_list)
+    google_spiber.run_rank_spider()
 
 if __name__ == '__main__':
-    download_apks()
+    parser = argparse.ArgumentParser(description="Google Play Spider")
+    parser.add_argument('-n', '--app_name', type=str, help='App name to download')
+    parser.add_argument('-f', '--filename', type=str, help='Excel file containing app names')
+    parser.add_argument('-s', '--save_dir', type=str, required=True, help='Save dir for downloaded APKs', required=True)
+    parser.add_argument('-r', '--rank', action='store_true', help='Rank apps and download APKs based on rank')
+
+    args = parser.parse_args()
+
+    device = "127.0.0.1:7555"
+    operator = MumuOperator(address=device.split(':')[0],
+                            port=int(device.split(':')[1]))
+    google_spider = GoogleSpider(operator)
+    google_spider.save_path = args.save_dir
+
+    if args.app_name:
+        app_info = {'name': args.app_name}
+        google_spider.run_apk_spider(app_info, args.save_dir)
+    elif args.filename:
+        df = pd.read_excel(args.filename)
+        app_infos = [{'name': v} for _, v in df['Name'].to_dict().items()]
+        google_spider.run_apks_spider(apps_info=app_infos, save_dir=args.save_dir)
+    elif args.rank:
+        rank_of()
+    else:
+        parser.print_help()

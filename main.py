@@ -64,21 +64,20 @@ class TestApk:
 
 
 def init_param():
-    parser = argparse.ArgumentParser(prog="APPs AUTO CONTOL",
-                                     description="本工具为APP自动测试工具，它会连接本地的MuMu模拟器默认127.0.0.1:7555端口，安装指定的APP，并自动产生尽可能多和不同的点击行为",
-                                     add_help=True)
-    parser.add_argument("-a", "--apk", help="apk, 待测试APP安装包的位置", required=False, type=str)
-    parser.add_argument("--apkdir", help="当进行多个APP测试时，指定apk存放的文件夹", required=False, type=str)
-    parser.add_argument("-p", "--pcapfile", help="apk产生的流量存储路径，默认值<package_name>.pcap", required=False, type=str)
-    parser.add_argument("-k", "--sslkeylog", help="sslkeylog文件路径，默认值<package_name>.keylog", required=False, type=str)
-    parser.add_argument("--pcapdir", help="进行多个APP测量时，产生的pcap文件的存储路径，默认值./results/pcap/", required=False, type=str)
-    parser.add_argument("--keydir", help="进行多个APP测量时，产生的sslkeylog文件的存储路径，默认值./results/sslkeylog/", required=False, type=str)
-    parser.add_argument("-t", "--timeout", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成，默认值 300 秒", default=5 * 60, required=False, type=int)
-    parser.add_argument("--round", help="APP测试的轮次，打开关闭APP多少次，每次代表遍历一遍完成，默认值 1", default=1, required=False, type=int)
-    parser.add_argument("--depth", help="APP测试测试时的遍历深度", default=5, required=False, type=int)
-    parser.add_argument("-d", "--device", help="device, 模拟器adb服务的运行端口，<ip_addr>:<port>，默认值127.0.0.1:7555", required=False, type=str)
-    parser.add_argument("-s", "--script", help="中间人的处理脚本路径，默认值值E:\\work\\app_dfs\\mitmproxy\\mitmproxy_script.py", required=False, type=str)
-
+    parser = argparse.ArgumentParser(prog="APPs AUTO CONTROL",
+                                 description="This tool is an automated testing tool for APPs. It connects to the local MuMu emulator at the default address 127.0.0.1:7555, installs the specified APP, and automatically generates as many and varied click behaviors as possible.",
+                                 add_help=True)
+    parser.add_argument("-a", "--apk", help="Path to the APK file of the APP to be tested", required=False, type=str)
+    parser.add_argument("--apkdir", help="Directory containing multiple APK files for testing", required=False, type=str)
+    parser.add_argument("-p", "--pcapfile", help="Path to store the generated traffic PCAP file, default value <package_name>.pcap", required=False, type=str)
+    parser.add_argument("-k", "--sslkeylog", help="Path to store the SSL key log file, default value <package_name>.keylog", required=False, type=str)
+    parser.add_argument("--pcapdir", help="Directory to store generated PCAP files for multiple APP measurements, default value ./results/pcap/", required=False, type=str)
+    parser.add_argument("--keydir", help="Directory to store generated SSL key log files for multiple APP measurements, default value ./results/sslkeylog/", required=False, type=str)
+    parser.add_argument("-t", "--timeout", help="Timeout for APP testing in seconds, representing the number of times the APP is opened and closed, default value 300 seconds", default=5 * 60, required=False, type=int)
+    parser.add_argument("--round", help="Number of rounds for APP testing, representing the number of times the APP is opened and closed, default value 1", default=1, required=False, type=int)
+    parser.add_argument("--depth", help="Traversal depth for APP testing", default=5, required=False, type=int)
+    parser.add_argument("-d", "--device", help="Device address for the emulator ADB service, <ip_addr>:<port>, default value 127.0.0.1:7555", required=False, type=str)
+    parser.add_argument("-s", "--script", help="Path to the mitmproxy script, default value E:\\work\\app_dfs\\mitmproxy\\mitmproxy_script.py", required=False, type=str)
     args = parser.parse_args()
 
     # 检查传参
